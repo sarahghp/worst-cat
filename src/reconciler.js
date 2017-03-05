@@ -8,17 +8,7 @@ let reconciler = Map({
 
 function render(gl, program, components){
 
-  // let oldKeys = Object.keys(reconciler.old);
-
-  // turrn componenets into Immutable Map if not already
-  !Map.isMap(components) && Map(components);
-
-  // check to see if nothing has changed; this will only work if the deep structures
-  // have been wrapped as Immutable collections
-  if components.equals(reconciler) {
-    return;
-  }
-
+  let oldKeys = Object.keys(reconciler.old);
 
   // program should probably be added to components, honestly
   gl.useProgram(program)
