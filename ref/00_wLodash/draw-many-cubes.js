@@ -78,7 +78,7 @@ function main() {
     scale        : [1, 1, 1],
   };
 
-  let multiMatrix = Array(1000).fill(0).map((n) => {
+  let multiMatrix = _.map(_.range(1000), (n) => {
     let myMat = Object.assign({}, initialMatrix);
     myMat.translation = [Math.random() * 1000, Math.random() * 1000, Math.random() * 40];
     myMat.rotation = [Math.random() * 7.28, Math.random() * 7.28, 1];
@@ -147,7 +147,7 @@ function main() {
       return [position, cubeVertexIndex, myTransform, color, draw]
     });
 
-    render(gl, program, [].concat.apply([], cubes));
+    render(gl, program, _.flatten(cubes));
     requestAnimationFrame(animateCube.bind(null, gl, program, components, rts));
   }
 
