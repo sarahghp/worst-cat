@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Let Us Become Brownian</title>
+  <script src="https://cdn.jsdelivr.net/lodash/4.16.3/lodash.min.js"></script>
+</head>
+<body>
+  <canvas id="c" width="400" height="500"></canvas>
+
+  <script id="2d-vertex-shader" type="x-shader/x-vertex">
+   
+    attribute vec2 a_position;
+    attribute vec4 a_color;
+    
+    uniform vec2 u_resolution;
+
+    varying   vec4 v_color;
+    
+    // all shaders have a main function
+    void main() {
+      // convert the position from pixels to 0.0 to 1.0
+      vec2 zeroToOne = a_position / u_resolution;
+
+      // convert from 0->1 to 0->2
+      vec2 zeroToTwo = zeroToOne * 2.0;
+
+      // convert from 0->2 to -1->+1 (clipspace)
+      vec2 clipSpace = zeroToTwo - 1.0;
+    
+      // gl_Position is a special variable a vertex shader
+      // is responsible for setting
+      gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+
+      v_color = a_color;
+    }
+
+  </script>
+   
+  <script id="2d-fragment-shader" type="x-shader/x-fragment">
+    
+    // fragment shaders don't have a default precision so we need
+    // to pick one. mediump is a good default
+    precision mediump float;
+    varying vec4 v_color;
+
+    
+    void main() {
+      // gl_FragColor is a special variable a fragment shader
+      // is responsible for setting
+      gl_FragColor = v_color;  
+    }
+    
+  </script>
+
+  <script src="./helpers.js"></script>
+  <script src="./draw-brown.js"></script>
+  <script src="./reconciler.js"></script>
+  
+  
+</body>
+</html>
