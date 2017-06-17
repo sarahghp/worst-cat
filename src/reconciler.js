@@ -1,8 +1,8 @@
 let callOrderDebug = false;
 
-let reconciler = Map({
+let reconciler = {
   old: {},
-});
+};
 
 // main
 
