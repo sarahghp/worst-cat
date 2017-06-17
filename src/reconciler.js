@@ -1,30 +1,34 @@
+const iMap = Immutable.Map;
+const iList = Immutable.List;
+
 let callOrderDebug = false;
 
-let reconciler = Map({
+let reconciler = iMap({
   old: {},
 });
 
-// main
+////////////////////////////////////////////////////////
+/////////////////////   MAIN   /////////////////////////
+////////////////////////////////////////////////////////
 
 function render(gl, program, components){
 
   // let oldKeys = Object.keys(reconciler.old);
 
-  // turrn componenets into Immutable Map if not already
-  !Map.isMap(components) && Map(components);
+  // turn componenets into Immutable List if not already
+  let immComponents =  !iList.isList(components) ? iList(components) : components;
 
   // check to see if nothing has changed; this will only work if the deep structures
   // have been wrapped as Immutable collections
-  if components.equals(reconciler) {
+  if (immComponents.equals(reconciler)) {
     return;
   }
-
 
   // program should probably be added to components, honestly
   gl.useProgram(program)
 
   // route components
-  let updated = components.map((component, index) => {
+  let updated = immComponents.map((component, index) => {
 
     switch(component.type) {
       case 'attribute':
@@ -54,11 +58,9 @@ function render(gl, program, components){
   // }
 }
 
-// renderers/reconcilers
-
-// function unsetKeys (keys) {
-//   return _.map(keys, (key) => _.unset(reconciler.old, key))
-// }
+////////////////////////////////////////////////////////
+///////////////   RENDER/RECONCILE   ///////////////////
+////////////////////////////////////////////////////////
 
 function renderAttribute(component, index, program, gl) {
   if(isNew(component)){
@@ -67,14 +69,14 @@ function renderAttribute(component, index, program, gl) {
     gl.enableVertexAttribArray(location);
     component.location = location;
     component.pointer.unshift(component.location);
-    reconciler.old[component.name] = Object.assign(component);
+    reconciler.setIn('old', component.name, component);
     bindAndSetArray(component, gl, gl.ARRAY_BUFFER);
     callOrderDebug && console.log(component.name + ' render finished');
     return component.name;
   }
 
   // otherwise check if we need to diff and act on that
-  let oldComponent = reconciler.old[component.name];
+  let oldComponent = reconciler.getIn('old', component.name);
 
   if (oldComponent && (oldComponent.name === component.name) && arraysEqual(oldComponent.data, component.data)){
     // deep equality check means it is same name & data
@@ -94,7 +96,7 @@ function renderUniform(component, index, program, gl) {
     let location = gl.getUniformLocation(program, component.name);
     component.location = location;
     component.data.unshift(component.location);
-    reconciler.old[component.name] = Object.assign(component);
+    reconciler.setIn('old', component.name, component);
     setUniform(component, gl);
     callOrderDebug && console.log('uniform render finished');
     return component.name;
@@ -122,14 +124,14 @@ function renderElementArray(component, index, program, gl) {
     // if it is new, we do all the things: create location, enable, bind data, then we're done
     let location = gl.getAttribLocation(program, component.name);
     component.location = location;
-    reconciler.old[component.name] = Object.assign(component);
+    reconciler.setIn('old', component.name, component);
     bindAndSetArray(component, gl, gl.ELEMENT_ARRAY_BUFFER);
     callOrderDebug && console.log('elem render finished');
     return component.name;
   }
 
   // otherwise check if we need to diff and act on that
-  let oldComponent = reconciler.old[component.name];
+  let oldComponent = reconciler.getIn('old', component.name);
 
   if (oldComponent && (oldComponent.name === component.name) && arraysEqual(oldComponent.data, component.data)){
     // deep equality check means it is same name & data
@@ -144,14 +146,16 @@ function renderElementArray(component, index, program, gl) {
 
 function drawIt(component, index, program, gl) {
   // draw is always called
-  reconciler.old[component.name] = Object.assign(component);
+  reconciler.setIn('old', component.name, component);
   component.drawCall.apply(gl, component.data);
   callOrderDebug && console.log('draw finished');
 
   return component.name;
 }
 
-// Helpers
+////////////////////////////////////////////////////////
+////////////////////   HELPERS   ////////////////////////
+////////////////////////////////////////////////////////
 
 function isNew(component) {
   return !component.hasOwnProperty('location');
