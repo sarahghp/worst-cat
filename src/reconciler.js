@@ -55,9 +55,6 @@ function render(gl, program, components){ // components is a single list of maps
       oldRec.merge(...updated.filter(Boolean));
   });
 
-  console.log(reconciler.size);
-
-
   // if(oldKeys.length > updated.length) {
   //   unsetKeys(_.difference(oldKeys, updated));
   // }

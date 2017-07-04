@@ -79,7 +79,7 @@ function main() {
     scale        : [1, 1, 1],
   });
 
-  let multiMatrixList = I.List(Array(100).fill(0).map((n) => {
+  let multiMatrixList = I.List(Array(1000).fill(0).map((n) => {
     let myMat = Object.assign({}, initialMatrix);
     myMat.translation = [Math.random() * 1000, Math.random() * 1000, Math.random() * 40];
     myMat.rotation = [Math.random() * 7.28, Math.random() * 7.28, 1];
@@ -123,8 +123,8 @@ function main() {
     // have to get updated values, create new transform data, set that data, generate components, call
 
     // Create matrices
-    const updatedMatrices = matrixList.map((mat, idx) => {
-      return mat.update('rotation', (r) => r += (.01 * idx));
+    const updatedMatrices = matrixList.map((mat) => {
+      return mat.update('rotation', (rot) => rot.map( (r, i) => r += (.01 * i) ));
     });
 
     const upadtedComponents = updatedMatrices.map((updatedMatrix) => {
@@ -152,7 +152,7 @@ function main() {
 
     // Call render & animate
     render(gl, program, updatedSequence); // spread nested return array
-    // requestAnimationFrame(animateCube.bind(null, gl, program, components, updatedMatrices));
+    requestAnimationFrame(animateCube.bind(null, gl, program, components, updatedMatrices));
   }
 
   var drawUs = [position, cubeVertexIndex, transformMatrix, color, draw];
