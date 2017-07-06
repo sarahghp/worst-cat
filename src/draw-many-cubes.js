@@ -78,7 +78,7 @@ function main() {
     scale        : [1, 1, 1],
   };
 
-  let multiMatrix = Array(1000).fill(0).map((n) => {
+  let multiMatrix = Array(10000).fill(0).map((n) => {
     let myMat = Object.assign({}, initialMatrix);
     myMat.translation = [Math.random() * 1000, Math.random() * 1000, Math.random() * 40];
     myMat.rotation = [Math.random() * 7.28, Math.random() * 7.28, 1];
@@ -115,32 +115,42 @@ function main() {
   const clientHeight = gl.canvas.clientHeight;
 
   // animate
-  function animateCube(gl, program, components){
+  function animateCube(gl, program, components, matrixList){
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    let cubes = multiMatrix.map((mat) => {
+    const updatedMatrices = matrixList.map((mat) => {
       mat.rotation = mat.rotation.map((r, i) => r += (.01 * i));
+      return mat;
+    });
+
+    const upadtedComponents = updatedMatrices.map((updatedMatrix) => {
+
+      const rotation = updatedMatrix.rotation
+      const translation = updatedMatrix.translation;
+      const scale = updatedMatrix.scale;
 
       // Compute the matrix
       let matrix = m4.projection(clientWidth, clientHeight, 400);
-          matrix = m4.translate(matrix, mat.translation[0], mat.translation[1], mat.translation[2]);
-          matrix = m4.xRotate(matrix, mat.rotation[0]);
-          matrix = m4.yRotate(matrix, mat.rotation[1]);
-          matrix = m4.zRotate(matrix, mat.rotation[2]);
-          matrix = m4.scale(matrix, mat.scale[0], mat.scale[1], mat.scale[2]);
+          matrix = m4.translate(matrix, translation[0], translation[1], translation[2]);
+          matrix = m4.xRotate(matrix, rotation[0]);
+          matrix = m4.yRotate(matrix, rotation[1]);
+          matrix = m4.zRotate(matrix, rotation[2]);
+          matrix = m4.scale(matrix, scale[0], scale[1], scale[2]);
 
-      myTransform = Object.assign({}, transformMatrix)
-      myTransform.data = [false, matrix];
-
-      return [position, cubeVertexIndex, myTransform, color, draw]
+      return Object.assign({}, transformMatrix, { 'data': [false, matrix] });
     });
 
-    render(gl, program, [].concat(...cubes)); // spread nested return array
-    requestAnimationFrame(animateCube.bind(null, gl, program, components));
+    const updatedSequence = upadtedComponents.map((updatedComp) => {
+      return [components[0], components[1], updatedComp, components[3], components[4]];
+    });
+
+
+    render(gl, program, [].concat(...updatedSequence)); // spread nested return array
+    requestAnimationFrame(animateCube.bind(null, gl, program, components, updatedMatrices));
   }
 
   var drawUs = [position, cubeVertexIndex, transformMatrix, color, draw];
-  requestAnimationFrame(animateCube.bind(null, gl, program, drawUs, initialMatrix));
+  requestAnimationFrame(animateCube.bind(null, gl, program, drawUs, multiMatrix));
 
 }
 
