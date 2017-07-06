@@ -44,7 +44,6 @@ function render(gl, program, components){ // components is a single list of maps
         return drawIt(component, index, program, gl);
 
       default:
-        console.log(component);
         console.error('Cannot render component of type:', component.get('type'));
     }
   });
@@ -163,35 +162,32 @@ function drawIt(component, index, program, gl) {
 ////////////////////////////////////////////////////////
 
 function hasNotChanged (component) {
-  return component.equals(reconciler.getIn('old', component.get('name')))
+  return component.equals(reconciler.get(component.get('name')))
 }
 
 function isNew(component) {
   return !component.has('location');
 }
 
-function bindAndSetArray (component, gl, bufferType){
-  let buffer = gl.createBuffer();
+// function bindAndSetArray (component, gl, bufferType){ // 3.0% overall
+//   const buffer = gl.createBuffer();
+//   const data = getData(component); // moving this out of bufferData helps performance a little?
+//   gl.bindBuffer(bufferType, buffer);
+//   gl.bufferData(bufferType, data, gl.STATIC_DRAW); // 0.8% overall
+//   bufferType === gl.ARRAY_BUFFER && gl.vertexAttribPointer.apply(gl, component.get('pointer'));
+// }
+
+function bindAndSetArray (component, gl, bufferType){ // 2.7% overall
+  const buffer = gl.createBuffer();
   gl.bindBuffer(bufferType, buffer);
-  gl.bufferData(bufferType, component.get('data'), gl.STATIC_DRAW);
+  gl.bufferData(bufferType, component.get('data'), gl.STATIC_DRAW); //0.9% overall, 0.4ms, 0.6ms, 0.3ms
   bufferType === gl.ARRAY_BUFFER && gl.vertexAttribPointer.apply(gl, component.get('pointer'));
+}
+
+function getData (component) {
+  return component.get('data');
 }
 
 function setUniform(component, gl){
   gl[component.get('dataType')].apply(gl, component.get('data'));
-}
-
-function arraysEqual (arr1, arr2) {
-  if (arr1.length !== arr2.length) {
-    return false;
-  }
-
-  for (var i = 0; i < arr1.length; i++) {
-    if (arr1[i] !== arr2[i]) {
-      return false;
-    }
-  }
-
-  return true;
-
 }

@@ -9,6 +9,9 @@ function main() {
   const canvas = document.getElementById('c');
   const gl = initGL(canvas);
 
+  const clientWidth = gl.canvas.clientWidth;
+  const clientHeight = gl.canvas.clientHeight;
+
   // create, link, and use program
   const program = createProgramFromScripts(gl, '3d-vertex-shader', '3d-fragment-shader');
 
@@ -74,17 +77,27 @@ function main() {
   });
   // matrix
   const initialMatrix = I.Map({
-    translation  : [gl.canvas.clientWidth/3, gl.canvas.clientHeight/3, 40],
+    translation  : [clientWidth/3, clientHeight/3, 40],
     rotation     : [1, 1, 1],
     scale        : [1, 1, 1],
   });
 
-  let multiMatrixList = I.List(Array(1000).fill(0).map((n) => {
-    let myMat = Object.assign({}, initialMatrix);
-    myMat.translation = [Math.random() * 1000, Math.random() * 1000, Math.random() * 40];
-    myMat.rotation = [Math.random() * 7.28, Math.random() * 7.28, 1];
-    myMat.scale = [1, 1, 1];
-    return I.Map(myMat);
+  // this is taking a map, setting it to an object, then reinstantiating it as a map
+  // let's rewrite below and see if it changes
+  // let multiMatrixList = I.List(Array(1000).fill(0).map((n) => {
+  //   let myMat = Object.assign({}, initialMatrix);
+  //   myMat.translation = [Math.random() * 1000, Math.random() * 1000, Math.random() * 40];
+  //   myMat.rotation = [Math.random() * 7.28, Math.random() * 7.28, 1];
+  //   myMat.scale = [1, 1, 1];
+  //   return I.Map(myMat);
+  // }));
+
+  let multiMatrixList = I.List(Array(100).fill(0).map(() => {
+    return initialMatrix.withMutations((initMat) => {
+      initMat.set('translation', [Math.random() * 1000, Math.random() * 1000, Math.random() * 40]);
+      initMat.set('rotation', [Math.random() * 7.28, Math.random() * 7.28, 1]);
+      initMat.set('scale', [1, 1, 1]);
+    })
   }));
 
   let transformMatrix = I.Map({
@@ -112,8 +125,6 @@ function main() {
     data: [gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0]
   })
 
-  const clientWidth = gl.canvas.clientWidth;
-  const clientHeight = gl.canvas.clientHeight;
 
   // animate
   function animateCube(gl, program, components, matrixList){
