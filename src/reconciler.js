@@ -163,13 +163,7 @@ function drawIt(component, index, program, gl) {
 ////////////////////////////////////////////////////////
 
 function hasNotChanged (component) {
-  const componentData = component.get('data');
-  const componentName = component.get('name');
-  const reconcilerComp = reconciler.get(componentName);
-  const reconcilerData = reconciler.getIn(componentName, 'data')
-  const noChange = !!(reconcilerComp && reconcilerData.equals(componentData));
-  console.log(noChange);
-  return noChange;
+  return component.equals(reconciler.get(component.get('name')))
 }
 
 function isNew(component) {
@@ -178,26 +172,25 @@ function isNew(component) {
   return yes;
 }
 
-function bindAndSetArray (component, gl, bufferType){ // 3.0% overall, 76.5% @1000 cubes
-  const buffer = gl.createBuffer();
-  const data = getData(component); // moving this out of bufferData helps performance a little?
-  gl.bindBuffer(bufferType, buffer);
-  gl.bufferData(bufferType, data, gl.STATIC_DRAW); // 0.8% overall
-  bufferType === gl.ARRAY_BUFFER && gl.vertexAttribPointer.apply(gl, component.get('pointer').toArray());
-}
-
-// function bindAndSetArray (component, gl, bufferType){ // 2.7% overall, 76.5% @1000 cubes
+// function bindAndSetArray (component, gl, bufferType){ // 3.0% overall
 //   const buffer = gl.createBuffer();
+//   const data = getData(component); // moving this out of bufferData helps performance a little?
 //   gl.bindBuffer(bufferType, buffer);
-//   gl.bufferData(bufferType, component.get('data'), gl.STATIC_DRAW); //0.9% overall, 0.4ms, 0.6ms, 0.3ms
+//   gl.bufferData(bufferType, data, gl.STATIC_DRAW); // 0.8% overall
 //   bufferType === gl.ARRAY_BUFFER && gl.vertexAttribPointer.apply(gl, component.get('pointer'));
 // }
 
+function bindAndSetArray (component, gl, bufferType){ // 2.7% overall
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(bufferType, buffer);
+  gl.bufferData(bufferType, component.get('data'), gl.STATIC_DRAW); //0.9% overall, 0.4ms, 0.6ms, 0.3ms
+  bufferType === gl.ARRAY_BUFFER && gl.vertexAttribPointer.apply(gl, component.get('pointer'));
+}
+
 function getData (component) {
-  return component.get('data').toArray();
+  return component.get('data');
 }
 
 function setUniform(component, gl){
-  console.log(component.get('data').toArray());
-  gl[component.get('dataType')].apply(gl, component.get('data').toArray());
+  gl[component.get('dataType')].apply(gl, component.get('data'));
 }
