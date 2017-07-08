@@ -80,7 +80,7 @@ function renderAttribute(component, index, program, gl) {
     updatedComponent = component.withMutations((comp) => {
       // we add the location to the front of the pointer, which is used in the bindAndSetArray call
       comp.set('location', location)
-          .update('pointer', (p) => p.size < 6 ? p.unshift(location) : p);
+          .update('pointer', (p) => p.length < 6 && [].concat(location, p));
     });
 
   } else {
@@ -108,13 +108,13 @@ function renderUniform(component, index, program, gl) {
     updatedComponent = component.withMutations((comp) => {
       // we add the location to the front of the data array, which is used in the setUniform call
       comp.set('location', location)
-          .update('data', (d) => d.unshift(location))
+          .update('data', (d) => [].concat(location, d))
     });
 
   } else {
     // overwrite data with location information again
     // TODO: Improve?
-    updatedComponent = component.update('data', (d) => d.unshift(location));
+    updatedComponent = component.update('data', [].concat(location, d));
   }
 
   setUniform(updatedComponent, gl);
@@ -150,8 +150,7 @@ function renderElementArray(component, index, program, gl) {
 function drawIt(component, index, program, gl) {
   // draw is always called
   const drawCall = component.get('drawCall');
-  console.log(component.get('data').toArray());
-  drawCall.apply(gl, component.get('data').toArray());
+  drawCall.apply(gl, component.get('data'));
   // callOrderDebug && console.log('draw finished');
 
   // so we don't need to track it
@@ -168,7 +167,6 @@ function hasNotChanged (component) {
 
 function isNew(component) {
   const yes = !reconciler.has(component)
-  console.log(yes, 'is new');
   return yes;
 }
 
