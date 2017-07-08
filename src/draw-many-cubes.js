@@ -92,7 +92,7 @@ function main() {
   //   return I.Map(myMat);
   // }));
 
-  let multiMatrixList = I.List(Array(1000).fill(0).map(() => {
+  let multiMatrixList = I.List(Array(10).fill(0).map(() => {
     return initialMatrix.withMutations((initMat) => {
       initMat.set('translation', [Math.random() * 1000, Math.random() * 1000, Math.random() * 40]);
       initMat.set('rotation', [Math.random() * 7.28, Math.random() * 7.28, 1]);
@@ -163,7 +163,7 @@ function main() {
 
     // Call render & animate
     render(gl, program, updatedSequence); // spread nested return array
-    requestAnimationFrame(animateCube.bind(null, gl, program, components, updatedMatrices));
+    // requestAnimationFrame(animateCube.bind(null, gl, program, components, updatedMatrices));
   }
 
   var drawUs = [position, cubeVertexIndex, transformMatrix, color, draw];

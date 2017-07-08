@@ -13,7 +13,7 @@ function render(gl, program, components){ // components is a single list of maps
   // turn componenets into Immutable List if not already
   let immComponents =  !iList.isList(components) ? iList(components) : components;
 
-  // TODO: figure out how to check with reconciler being mutable
+  // TODO: Delete or save List to check equality in reconciler
   // check to see if nothing has changed; this will only work if the deep structures
   // have been wrapped as Immutable collections
   if (immComponents.equals(reconciler)) {
@@ -24,7 +24,7 @@ function render(gl, program, components){ // components is a single list of maps
   gl.useProgram(program)
 
   // route components
-  const updated = immComponents.map((component, index) => {
+  const updated = immComponents.map((component, index) => { // TODO: remove `index` if unused
 
     switch(component.get('type')) {
       case 'attribute':
@@ -54,9 +54,8 @@ function render(gl, program, components){ // components is a single list of maps
       oldRec.merge(...updated.filter(Boolean));
   });
 
-  // if(oldKeys.length > updated.length) {
-  //   unsetKeys(_.difference(oldKeys, updated));
-  // }
+  console.log(reconciler.toJS());
+
 }
 
 ////////////////////////////////////////////////////////
@@ -84,6 +83,7 @@ function renderAttribute(component, index, program, gl) {
     });
 
   } else {
+    // TODO: Does this still make sense? Probably needs same fix I did below
     updatedComponent = component;
   }
 
@@ -105,16 +105,25 @@ function renderUniform(component, index, program, gl) {
   if(isNew(component)){
     const location = gl.getUniformLocation(program, componentName);
 
+    // we add the location to the front of the data array, which is used in the setUniform call
     updatedComponent = component.withMutations((comp) => {
-      // we add the location to the front of the data array, which is used in the setUniform call
+      const data = comp.get('data');
+
       comp.set('location', location)
-          .update('data', (d) => [].concat(location, d))
+          .set('dataWithLocation', [].concat(location, data))
     });
 
+
   } else {
-    // overwrite data with location information again
-    // TODO: Improve?
-    updatedComponent = component.update('data', [].concat(location, d));
+
+    const extantComponent = reconciler.get(componentName);
+    const newData = component.get('data'); // this is the changed data
+
+    updatedComponent = extantComponent.withMutations((extComp) => {
+      const location = extComp.get('location');
+      extComp.set('dataWithLocation', [].concat(location, newData));
+    });
+
   }
 
   setUniform(updatedComponent, gl);
@@ -138,6 +147,7 @@ function renderElementArray(component, index, program, gl) {
     updatedComponent = component.set('location', location);
 
   } else {
+    // TODO: Double-check this too
     updatedComponent = component;
   }
 
@@ -162,12 +172,22 @@ function drawIt(component, index, program, gl) {
 ////////////////////////////////////////////////////////
 
 function hasNotChanged (component) {
-  return component.equals(reconciler.get(component.get('name')))
+  const oldComponent = reconciler.get(component.get('name'));
+
+  if (!(oldComponent)) {
+    return false;
+  }
+
+  const oldData = oldComponent.get('data')
+  const newData = component.get('data')
+
+  const result = oldComponent && arraysEqual(oldData, newData);
+  // console.log(result);
+  return result;
 }
 
 function isNew(component) {
-  const yes = !reconciler.has(component)
-  return yes;
+  return !(reconciler.get(component.get('name')));
 }
 
 // function bindAndSetArray (component, gl, bufferType){ // 3.0% overall
@@ -190,5 +210,23 @@ function getData (component) {
 }
 
 function setUniform(component, gl){
-  gl[component.get('dataType')].apply(gl, component.get('data'));
+  // console.log(component.get('dataWithLocation'));
+  gl[component.get('dataType')].apply(gl, component.get('dataWithLocation'));
+}
+
+function arraysEqual (arr1, arr2) {
+  if (arr1.length !== arr2.length) {
+    return false;
+  }
+
+  // is there a length at which it is not worth iterating and just returning the same thing?
+
+  for (var i = 0; i < arr1.length; i++) {
+    if (arr1[i] !== arr2[i]) {
+      return false;
+    }
+  }
+
+  return true;
+
 }
