@@ -57,8 +57,8 @@ function main() {
   let position = I.Map({
     type: 'attribute',
     name: 'a_position',
-    data: new Float32Array(vertices),
-    pointer: [3, gl.FLOAT, false, 0, 0],
+    data: I.List(new Float32Array(vertices)),
+    pointer: I.List([3, gl.FLOAT, false, 0, 0]),
   });
 
   const cubeVertexIndices = [
@@ -73,7 +73,7 @@ function main() {
   let cubeVertexIndex = I.Map({
     type: 'element_arr',
     name: 'e_indices', // in this case the name is just used in the reconciler as a uniqueID; can gen ID in there if necc. instead
-    data: new Uint16Array(cubeVertexIndices),
+    data: I.List(new Uint16Array(cubeVertexIndices)),
   });
   // matrix
   const initialMatrix = I.Map({
@@ -113,8 +113,8 @@ function main() {
   let color = I.Map({
     type: 'attribute',
     name: 'a_color',
-    data: new Float32Array(colors),
-    pointer: [4, gl.FLOAT, false, 0, 0]
+    data: I.List(new Float32Array(colors)),
+    pointer: I.List([4, gl.FLOAT, false, 0, 0])
   });
 
   // draw
@@ -122,7 +122,7 @@ function main() {
     type: 'draw',
     name: 'd_draw', // in this case the name is just used in the reconciler as a uniqueID; can gen ID in there if necc. instead
     drawCall: gl.drawElements,
-    data: [gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0]
+    data: I.List([gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0])
   })
 
 
@@ -152,7 +152,7 @@ function main() {
           matrix = m4.zRotate(matrix, rotation[2]);
           matrix = m4.scale(matrix, scale[0], scale[1], scale[2]);
 
-      return transformMatrix.set('data', [false, matrix]);
+      return transformMatrix.set('data', I.List([false, matrix]));
     });
 
     // Add intro draw sequence
@@ -163,7 +163,7 @@ function main() {
 
     // Call render & animate
     render(gl, program, updatedSequence); // spread nested return array
-    requestAnimationFrame(animateCube.bind(null, gl, program, components, updatedMatrices));
+    // requestAnimationFrame(animateCube.bind(null, gl, program, components, updatedMatrices));
   }
 
   var drawUs = [position, cubeVertexIndex, transformMatrix, color, draw];

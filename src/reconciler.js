@@ -1,7 +1,7 @@
 const iMap = Immutable.Map;
 const iList = Immutable.List;
 
-let callOrderDebug = false;
+// let callOrderDebug = false;
 let reconciler = iMap({});
 
 ////////////////////////////////////////////////////////
@@ -28,19 +28,19 @@ function render(gl, program, components){ // components is a single list of maps
 
     switch(component.get('type')) {
       case 'attribute':
-        callOrderDebug && console.log(`${component.get('name')} in switch.`);
+        // callOrderDebug && console.log(`${component.get('name')} in switch.`);
         return renderAttribute(component, index, program, gl);
 
       case 'uniform':
-        callOrderDebug && console.log(`${component.get('name')} in switch.`);
+        // callOrderDebug && console.log(`${component.get('name')} in switch.`);
         return renderUniform(component, index, program, gl);
 
       case 'element_arr':
-        callOrderDebug && console.log('element_arr in switch.');
+        // callOrderDebug && console.log('element_arr in switch.');
         return renderElementArray(component, index, program, gl);
 
       case 'draw':
-        callOrderDebug && console.log('draw in switch.');
+        // callOrderDebug && console.log('draw in switch.');
         return drawIt(component, index, program, gl);
 
       default:
@@ -80,15 +80,15 @@ function renderAttribute(component, index, program, gl) {
     updatedComponent = component.withMutations((comp) => {
       // we add the location to the front of the pointer, which is used in the bindAndSetArray call
       comp.set('location', location)
-          .update('pointer', (p) => p.length < 6 && p.unshift(location));
+          .update('pointer', (p) => p.size < 6 ? p.unshift(location) : p);
     });
 
   } else {
     updatedComponent = component;
   }
 
-  bindAndSetArray(component, gl, gl.ARRAY_BUFFER);
-  callOrderDebug && console.log(componentName + ' render finished');
+  bindAndSetArray(updatedComponent, gl, gl.ARRAY_BUFFER);
+  // callOrderDebug && console.log(componentName + ' render finished');
 
   return { [componentName]: updatedComponent };
 }
@@ -117,8 +117,8 @@ function renderUniform(component, index, program, gl) {
     updatedComponent = component.update('data', (d) => d.unshift(location));
   }
 
-  setUniform(component, gl);
-  callOrderDebug && console.log('uniform render finished');
+  setUniform(updatedComponent, gl);
+  // callOrderDebug && console.log('uniform render finished');
   return { [componentName]: updatedComponent };
 }
 
@@ -142,7 +142,7 @@ function renderElementArray(component, index, program, gl) {
   }
 
   bindAndSetArray(component, gl, gl.ELEMENT_ARRAY_BUFFER);
-  callOrderDebug && console.log('elem render finished');
+  // callOrderDebug && console.log('elem render finished');
   return { [componentName]: updatedComponent };
 
 }
@@ -150,8 +150,9 @@ function renderElementArray(component, index, program, gl) {
 function drawIt(component, index, program, gl) {
   // draw is always called
   const drawCall = component.get('drawCall');
-  drawCall.apply(gl, component.get('data'));
-  callOrderDebug && console.log('draw finished');
+  console.log(component.get('data').toArray());
+  drawCall.apply(gl, component.get('data').toArray());
+  // callOrderDebug && console.log('draw finished');
 
   // so we don't need to track it
   return null;
@@ -162,32 +163,41 @@ function drawIt(component, index, program, gl) {
 ////////////////////////////////////////////////////////
 
 function hasNotChanged (component) {
-  return component.equals(reconciler.get(component.get('name')))
+  const componentData = component.get('data');
+  const componentName = component.get('name');
+  const reconcilerComp = reconciler.get(componentName);
+  const reconcilerData = reconciler.getIn(componentName, 'data')
+  const noChange = !!(reconcilerComp && reconcilerData.equals(componentData));
+  console.log(noChange);
+  return noChange;
 }
 
 function isNew(component) {
-  return !component.has('location');
+  const yes = !reconciler.has(component)
+  console.log(yes, 'is new');
+  return yes;
 }
 
-// function bindAndSetArray (component, gl, bufferType){ // 3.0% overall
+function bindAndSetArray (component, gl, bufferType){ // 3.0% overall, 76.5% @1000 cubes
+  const buffer = gl.createBuffer();
+  const data = getData(component); // moving this out of bufferData helps performance a little?
+  gl.bindBuffer(bufferType, buffer);
+  gl.bufferData(bufferType, data, gl.STATIC_DRAW); // 0.8% overall
+  bufferType === gl.ARRAY_BUFFER && gl.vertexAttribPointer.apply(gl, component.get('pointer').toArray());
+}
+
+// function bindAndSetArray (component, gl, bufferType){ // 2.7% overall, 76.5% @1000 cubes
 //   const buffer = gl.createBuffer();
-//   const data = getData(component); // moving this out of bufferData helps performance a little?
 //   gl.bindBuffer(bufferType, buffer);
-//   gl.bufferData(bufferType, data, gl.STATIC_DRAW); // 0.8% overall
+//   gl.bufferData(bufferType, component.get('data'), gl.STATIC_DRAW); //0.9% overall, 0.4ms, 0.6ms, 0.3ms
 //   bufferType === gl.ARRAY_BUFFER && gl.vertexAttribPointer.apply(gl, component.get('pointer'));
 // }
 
-function bindAndSetArray (component, gl, bufferType){ // 2.7% overall
-  const buffer = gl.createBuffer();
-  gl.bindBuffer(bufferType, buffer);
-  gl.bufferData(bufferType, component.get('data'), gl.STATIC_DRAW); //0.9% overall, 0.4ms, 0.6ms, 0.3ms
-  bufferType === gl.ARRAY_BUFFER && gl.vertexAttribPointer.apply(gl, component.get('pointer'));
-}
-
 function getData (component) {
-  return component.get('data');
+  return component.get('data').toArray();
 }
 
 function setUniform(component, gl){
-  gl[component.get('dataType')].apply(gl, component.get('data'));
+  console.log(component.get('data').toArray());
+  gl[component.get('dataType')].apply(gl, component.get('data').toArray());
 }
