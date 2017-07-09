@@ -1,47 +1,52 @@
 const iMap = Immutable.Map;
 const iList = Immutable.List;
 
-// let callOrderDebug = false;
+let callOrderDebug = false;
 let reconciler = iMap({});
 
 ////////////////////////////////////////////////////////
 /////////////////////   MAIN   /////////////////////////
 ////////////////////////////////////////////////////////
 
-function render(gl, program, components){ // components is a single list of maps
+function render(gl, components){ // components is a single list of maps
 
   // turn componenets into Immutable List if not already
   let immComponents =  !iList.isList(components) ? iList(components) : components;
 
-  // TODO: Delete or save List to check equality in reconciler
-  // check to see if nothing has changed; this will only work if the deep structures
-  // have been wrapped as Immutable collections
-  if (immComponents.equals(reconciler)) {
+  // Check to see if this list is the same we were last called with and short-circuit if so
+  // Though it would be silly to call render() with something totally unchanged, let's just
+  // be extra sure
+  if (immComponents.equals(reconciler.get('unchangedList'))) {
     return;
+  } else {
+    reconciler.set('unchangedList', immComponents);
   }
 
   // program should probably be added to components, honestly
-  gl.useProgram(program)
+  // gl.useProgram(program)
 
   // route components
-  const updated = immComponents.map((component, index) => { // TODO: remove `index` if unused
+  const updated = immComponents.map((component) => {
 
     switch(component.get('type')) {
+      case 'program':
+        return bindProgram(component, gl);
+
       case 'attribute':
-        // callOrderDebug && console.log(`${component.get('name')} in switch.`);
-        return renderAttribute(component, index, program, gl);
+        callOrderDebug && console.log(`${component.get('name')} in switch.`);
+        return renderAttribute(component, gl);
 
       case 'uniform':
-        // callOrderDebug && console.log(`${component.get('name')} in switch.`);
-        return renderUniform(component, index, program, gl);
+        callOrderDebug && console.log(`${component.get('name')} in switch.`);
+        return renderUniform(component, gl);
 
       case 'element_arr':
-        // callOrderDebug && console.log('element_arr in switch.');
-        return renderElementArray(component, index, program, gl);
+        callOrderDebug && console.log('element_arr in switch.');
+        return renderElementArray(component, gl);
 
       case 'draw':
-        // callOrderDebug && console.log('draw in switch.');
-        return drawIt(component, index, program, gl);
+        callOrderDebug && console.log('draw in switch.');
+        return drawIt(component, gl);
 
       default:
         console.error('Cannot render component of type:', component.get('type'));
@@ -54,15 +59,32 @@ function render(gl, program, components){ // components is a single list of maps
       oldRec.merge(...updated.filter(Boolean));
   });
 
-  console.log(reconciler.toJS());
-
 }
 
 ////////////////////////////////////////////////////////
 ///////////////   RENDER/RECONCILE   ///////////////////
 ////////////////////////////////////////////////////////
 
-function renderAttribute(component, index, program, gl) {
+function bindProgram(program, gl) {
+  const programName = program.get('name');
+  const programData = program.get('data');
+
+  if (reconciler.get('lastUsedProgram', iMap()).equals(program)) {
+    return null;
+  }
+
+  if (isNew(programName)) {
+    reconciler = reconciler.set('lastUsedProgram', program);
+  }
+
+  gl.useProgram(programData);
+  return { [programName]: program }
+
+}
+
+// ------------------- ATTRIBUTE ------------------------
+
+function renderAttribute(component, gl) {
 
   if (hasNotChanged(component)) {
     return null; // this way we can filter it out of the update with a Boolean
@@ -72,8 +94,9 @@ function renderAttribute(component, index, program, gl) {
   let updatedComponent;
 
   // if it is new, we do all the things: create location, enable, bind data, then we're done
-  if(isNew(component)){
-    const location = gl.getAttribLocation(program, componentName);
+  if(isNew(componentName)){
+    const program = reconciler.getIn(['lastUsedProgram', 'data']);
+    const location = gl.getAttribLocation(program, component.get('shaderVar'));
     gl.enableVertexAttribArray(location);
 
     updatedComponent = component.withMutations((comp) => {
@@ -83,17 +106,25 @@ function renderAttribute(component, index, program, gl) {
     });
 
   } else {
-    // TODO: Does this still make sense? Probably needs same fix I did below
-    updatedComponent = component;
+    const extantComponent = reconciler.get(componentName);
+    const newData = component.get('data'); // this is the changed data
+
+    updatedComponent = extantComponent.withMutations((extComp) => {
+      const location = extComp.get('location');
+      extComp.set('data', newData);
+    });
   }
 
   bindAndSetArray(updatedComponent, gl, gl.ARRAY_BUFFER);
-  // callOrderDebug && console.log(componentName + ' render finished');
+  callOrderDebug && console.log(componentName + ' render finished');
 
   return { [componentName]: updatedComponent };
 }
 
-function renderUniform(component, index, program, gl) {
+// ------------------- UNIFORM ------------------------
+
+
+function renderUniform(component, gl) {
 
   if (hasNotChanged(component)) {
     return null; // this way we can filter it out of the update with a Boolean
@@ -102,8 +133,9 @@ function renderUniform(component, index, program, gl) {
   const componentName = component.get('name');
   let updatedComponent;
 
-  if(isNew(component)){
-    const location = gl.getUniformLocation(program, componentName);
+  if(isNew(componentName)){
+    const program = reconciler.getIn(['lastUsedProgram', 'data']);
+    const location = gl.getUniformLocation(program, component.get('shaderVar'));
 
     // we add the location to the front of the data array, which is used in the setUniform call
     updatedComponent = component.withMutations((comp) => {
@@ -112,7 +144,6 @@ function renderUniform(component, index, program, gl) {
       comp.set('location', location)
           .set('dataWithLocation', [].concat(location, data))
     });
-
 
   } else {
 
@@ -127,11 +158,13 @@ function renderUniform(component, index, program, gl) {
   }
 
   setUniform(updatedComponent, gl);
-  // callOrderDebug && console.log('uniform render finished');
+  callOrderDebug && console.log('uniform render finished');
   return { [componentName]: updatedComponent };
 }
 
-function renderElementArray(component, index, program, gl) {
+// ------------------- ELEMENT ARRAY ------------------------
+
+function renderElementArray(component, gl) {
 
   if (hasNotChanged(component)) {
     return null; // this way we can filter it out of the update with a Boolean
@@ -141,27 +174,31 @@ function renderElementArray(component, index, program, gl) {
   let updatedComponent;
 
   // if it is new, we do all the things: create location, enable, bind data, then we're done
-  if(isNew(component)){
-
+  if(isNew(componentName)){
+    const program = reconciler.getIn(['lastUsedProgram', 'data']);
     const location = gl.getAttribLocation(program, componentName);
     updatedComponent = component.set('location', location);
 
   } else {
-    // TODO: Double-check this too
-    updatedComponent = component;
+    const extantComponent = reconciler.get(componentName);
+    const location = extComp.getIn(componentName, 'location');
+    updatedComponent = extComp.set('location', location);
   }
 
   bindAndSetArray(component, gl, gl.ELEMENT_ARRAY_BUFFER);
-  // callOrderDebug && console.log('elem render finished');
+  callOrderDebug && console.log('elem render finished');
   return { [componentName]: updatedComponent };
 
 }
 
-function drawIt(component, index, program, gl) {
+// ------------------- DRAW ------------------------
+
+function drawIt(component, gl) {
+  const program = reconciler.getIn(['lastUsedProgram', 'data']);
   // draw is always called
   const drawCall = component.get('drawCall');
   drawCall.apply(gl, component.get('data'));
-  // callOrderDebug && console.log('draw finished');
+  callOrderDebug && console.log('draw finished');
 
   // so we don't need to track it
   return null;
@@ -171,32 +208,7 @@ function drawIt(component, index, program, gl) {
 ////////////////////   HELPERS   ////////////////////////
 ////////////////////////////////////////////////////////
 
-function hasNotChanged (component) {
-  const oldComponent = reconciler.get(component.get('name'));
-
-  if (!(oldComponent)) {
-    return false;
-  }
-
-  const oldData = oldComponent.get('data')
-  const newData = component.get('data')
-
-  const result = oldComponent && arraysEqual(oldData, newData);
-  // console.log(result);
-  return result;
-}
-
-function isNew(component) {
-  return !(reconciler.get(component.get('name')));
-}
-
-// function bindAndSetArray (component, gl, bufferType){ // 3.0% overall
-//   const buffer = gl.createBuffer();
-//   const data = getData(component); // moving this out of bufferData helps performance a little?
-//   gl.bindBuffer(bufferType, buffer);
-//   gl.bufferData(bufferType, data, gl.STATIC_DRAW); // 0.8% overall
-//   bufferType === gl.ARRAY_BUFFER && gl.vertexAttribPointer.apply(gl, component.get('pointer'));
-// }
+// ------------------- GL BUFFER CALLS ------------------------
 
 function bindAndSetArray (component, gl, bufferType){ // 2.7% overall
   const buffer = gl.createBuffer();
@@ -205,13 +217,31 @@ function bindAndSetArray (component, gl, bufferType){ // 2.7% overall
   bufferType === gl.ARRAY_BUFFER && gl.vertexAttribPointer.apply(gl, component.get('pointer'));
 }
 
-function getData (component) {
-  return component.get('data');
+function setUniform(component, gl){
+  gl[component.get('dataType')].apply(gl, component.get('dataWithLocation'));
 }
 
-function setUniform(component, gl){
-  // console.log(component.get('dataWithLocation'));
-  gl[component.get('dataType')].apply(gl, component.get('dataWithLocation'));
+// ------------------- DIFFING FNS ------------------------
+
+function hasNotChanged (component) {
+  const oldComponent = reconciler.get(component.get('name'));
+  const alwaysBind = component.get('rerender');
+
+  // components can indicate they must always be rebound even if they do not change
+  // this is useful for drawing multiple shapes
+
+  if (!(oldComponent) || alwaysBind) {
+    return false;
+  }
+
+  const oldData = oldComponent.get('data');
+  const newData = component.get('data');
+
+  return oldComponent && arraysEqual(oldData, newData);
+}
+
+function isNew(componentName) {
+  return !(reconciler.get(componentName));
 }
 
 function arraysEqual (arr1, arr2) {
@@ -230,3 +260,18 @@ function arraysEqual (arr1, arr2) {
   return true;
 
 }
+
+// ------------------- JUST REFERNCE NOTES ------------------------
+
+
+// function bindAndSetArray (component, gl, bufferType){ // 3.0% overall
+//   const buffer = gl.createBuffer();
+//   const data = getData(component); // moving this out of bufferData helps performance a little?
+//   gl.bindBuffer(bufferType, buffer);
+//   gl.bufferData(bufferType, data, gl.STATIC_DRAW); // 0.8% overall
+//   bufferType === gl.ARRAY_BUFFER && gl.vertexAttribPointer.apply(gl, component.get('pointer'));
+// }
+
+// function getData (component) {
+//   return component.get('data');
+// }

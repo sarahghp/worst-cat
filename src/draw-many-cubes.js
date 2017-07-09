@@ -13,10 +13,16 @@ function main() {
   const clientHeight = gl.canvas.clientHeight;
 
   // create, link, and use program
-  const program = createProgramFromScripts(gl, '3d-vertex-shader', '3d-fragment-shader');
+  // const program = createProgramFromScripts(gl, '3d-vertex-shader', '3d-fragment-shader');
+
+  const program = I.Map({
+    name: 'program',
+    type: 'program',
+    data: createProgramFromScripts(gl, '3d-vertex-shader', '3d-fragment-shader')
+  });
 
   // geometry
-  const vertices = [
+  const verticesOne = [
     // Front face
     0.0,    0.0,    100.0,
     100.0,  0.0,    100.0,
@@ -54,11 +60,60 @@ function main() {
     0.0,  100.0,    0.0
   ];
 
-  let position = I.Map({
+  const verticesTwo = [
+    // Front face
+    0.0,    0.0,    50.0,
+    100.0,  0.0,    50.0,
+    100.0,  100.0,  100.0,
+    0.0,    100.0,  100.0,
+
+    // Back face
+    0.0,    0.0,    0.0,
+    0.0,    100.0,  0.0,
+    50.0,  50.0,  0.0,
+    100.0,  0.0,    0.0,
+
+    // Top face
+    0.0,    100.0,  0.0,
+    0.0,    100.0,  100.0,
+    100.0,  100.0,  100.0,
+    100.0,  100.0,  0.0,
+
+    // Bottom face
+    0.0,    0.0,    0.0,
+    100.0,  0.0,    0.0,
+    100.0,  0.0,    100.0,
+    0.0,    0.0,    100.0,
+
+    // Right face
+    100.0,    0.0,  0.0,
+    50.0,  50.0,  0.0,
+    100.0,  100.0,  100.0,
+    100.0,    0.0,  100.0,
+
+    // Left face
+    0.0,    0.0,    0.0,
+    0.0,    0.0,    100.0,
+    0.0,  50.0,    50.0,
+    0.0,  100.0,    0.0
+  ];
+
+  let positionOne = I.Map({
     type: 'attribute',
-    name: 'a_position',
-    data: new Float32Array(vertices),
+    shaderVar: 'a_position',
+    name: 'positionOne',
+    data: new Float32Array(verticesOne),
     pointer: [3, gl.FLOAT, false, 0, 0],
+    rerender: true,
+  });
+
+  let positionTwo = I.Map({
+    type: 'attribute',
+    shaderVar: 'a_position',
+    name: 'positionTwo',
+    data: new Float32Array(verticesTwo),
+    pointer: [3, gl.FLOAT, false, 0, 0],
+    rerender: true,
   });
 
   const cubeVertexIndices = [
@@ -103,6 +158,7 @@ function main() {
   let transformMatrix = I.Map({
     type: 'uniform',
     name: 'u_matrix',
+    shaderVar: 'u_matrix',
     data: [],
     dataType: 'uniformMatrix4fv'
   });
@@ -113,6 +169,7 @@ function main() {
   let color = I.Map({
     type: 'attribute',
     name: 'a_color',
+    shaderVar: 'a_color',
     data: new Float32Array(colors),
     pointer: [4, gl.FLOAT, false, 0, 0]
   });
@@ -127,7 +184,7 @@ function main() {
 
 
   // animate
-  function animateCube(gl, program, components, matrixList){
+  function animateCube(gl, components, matrixList){
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -138,7 +195,7 @@ function main() {
       return mat.update('rotation', (rot) => rot.map( (r, i) => r += (.01 * i) ));
     });
 
-    const upadtedComponents = updatedMatrices.map((updatedMatrix) => {
+    const upadtedComponents = updatedMatrices.map((updatedMatrix, idx) => {
 
       const rotation = updatedMatrix.get('rotation')
       const translation = updatedMatrix.get('translation');
@@ -152,22 +209,28 @@ function main() {
           matrix = m4.zRotate(matrix, rotation[2]);
           matrix = m4.scale(matrix, scale[0], scale[1], scale[2]);
 
-      return transformMatrix.set('data', [false, matrix]);
+      return transformMatrix.withMutations((tm) => {
+        tm.set('data', [false, matrix])
+          .update('name', (n) => `${n}-${idx}`)
+      });
     });
 
-    // Add intro draw sequence
 
-    const updatedSequence = upadtedComponents.flatMap((updatedComp) => {
-      return [components[0], components[1], updatedComp, components[3], components[4]];
+    // Add into draw sequence
+
+    const updatedSequence = upadtedComponents.flatMap((updatedComp, idx) => {
+
+      let position = (idx % 2 === 0) ? positionOne : positionTwo;
+      return [components[0], position, components[2], updatedComp, components[4], components[5]];
     });
 
     // Call render & animate
-    render(gl, program, updatedSequence); // spread nested return array
-    // requestAnimationFrame(animateCube.bind(null, gl, program, components, updatedMatrices));
+    render(gl, updatedSequence); // spread nested return array
+    requestAnimationFrame(animateCube.bind(null, gl, components, updatedMatrices));
   }
 
-  var drawUs = [position, cubeVertexIndex, transformMatrix, color, draw];
-  requestAnimationFrame(animateCube.bind(null, gl, program, drawUs, multiMatrixList));
+  var drawUs = [program, positionOne, cubeVertexIndex, transformMatrix, color, draw];
+  requestAnimationFrame(animateCube.bind(null, gl, drawUs, multiMatrixList));
 
 }
 
