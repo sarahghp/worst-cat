@@ -11,7 +11,7 @@ function main() {
   const program = createProgramFromScripts(gl, '3d-vertex-shader', '3d-fragment-shader');
 
   // geometry
-  const vertices = [
+  const verticesOne = [
     // Front face
     0.0,    0.0,    100.0,
     100.0,  0.0,    100.0,
@@ -49,11 +49,60 @@ function main() {
     0.0,  100.0,    0.0
   ];
 
-  let position = {
+  const verticesTwo = [
+    // Front face
+    0.0,    0.0,    50.0,
+    100.0,  0.0,    50.0,
+    100.0,  100.0,  100.0,
+    0.0,    100.0,  100.0,
+
+    // Back face
+    0.0,    0.0,    0.0,
+    0.0,    100.0,  0.0,
+    50.0,  50.0,  0.0,
+    100.0,  0.0,    0.0,
+
+    // Top face
+    0.0,    100.0,  0.0,
+    0.0,    100.0,  100.0,
+    100.0,  100.0,  100.0,
+    100.0,  100.0,  0.0,
+
+    // Bottom face
+    0.0,    0.0,    0.0,
+    100.0,  0.0,    0.0,
+    100.0,  0.0,    100.0,
+    0.0,    0.0,    100.0,
+
+    // Right face
+    100.0,    0.0,  0.0,
+    50.0,  50.0,  0.0,
+    100.0,  100.0,  100.0,
+    100.0,    0.0,  100.0,
+
+    // Left face
+    0.0,    0.0,    0.0,
+    0.0,    0.0,    100.0,
+    0.0,  50.0,    50.0,
+    0.0,  100.0,    0.0
+  ];
+
+  let positionOne = {
     type: 'attribute',
-    name: 'a_position',
-    data: new Float32Array(vertices),
+    shaderVar: 'a_position',
+    name: 'positionOne',
+    data: new Float32Array(verticesOne),
     pointer: [3, gl.FLOAT, false, 0, 0],
+    rerender: true,
+  };
+
+  let positionTwo = {
+    type: 'attribute',
+    shaderVar: 'a_position',
+    name: 'positionTwo',
+    data: new Float32Array(verticesTwo),
+    pointer: [3, gl.FLOAT, false, 0, 0],
+    rerender: true,
   };
 
   const cubeVertexIndices = [
@@ -78,7 +127,7 @@ function main() {
     scale        : [1, 1, 1],
   };
 
-  let multiMatrix = Array(10000).fill(0).map((n) => {
+  let multiMatrix = Array(10).fill(0).map((n) => {
     let myMat = Object.assign({}, initialMatrix);
     myMat.translation = [Math.random() * 1000, Math.random() * 1000, Math.random() * 40];
     myMat.rotation = [Math.random() * 7.28, Math.random() * 7.28, 1];
@@ -88,6 +137,7 @@ function main() {
   let transformMatrix = {
     type: 'uniform',
     name: 'u_matrix',
+    shaderVar: 'u_matrix',
     data: [],
     dataType: 'uniformMatrix4fv'
   };
@@ -98,6 +148,7 @@ function main() {
   let color = {
     type: 'attribute',
     name: 'a_color',
+    shaderVar: 'a_color',
     data: new Float32Array(colors),
     pointer: [4, gl.FLOAT, false, 0, 0],
   };
@@ -140,16 +191,17 @@ function main() {
       return Object.assign({}, transformMatrix, { 'data': [false, matrix] });
     });
 
-    const updatedSequence = upadtedComponents.map((updatedComp) => {
-      return [components[0], components[1], updatedComp, components[3], components[4]];
-    });
+    const updatedSequence = upadtedComponents.map((updatedComp, idx) => {
+      const position = (idx % 2 === 0) ? positionOne : positionTwo;
 
+      return [position, components[1], updatedComp, components[3], components[4]];
+    });
 
     render(gl, program, [].concat(...updatedSequence)); // spread nested return array
     requestAnimationFrame(animateCube.bind(null, gl, program, components, updatedMatrices));
   }
 
-  var drawUs = [position, cubeVertexIndex, transformMatrix, color, draw];
+  var drawUs = [positionOne, cubeVertexIndex, transformMatrix, color, draw];
   requestAnimationFrame(animateCube.bind(null, gl, program, drawUs, multiMatrix));
 
 }

@@ -1,151 +1,132 @@
-let callOrderDebug = false;
+const callOrderDebug = false;
 
 let reconciler = {
   old: {},
 };
 
-// main
+////////////////////////////////////////////////////////
+/////////////////////   MAIN   /////////////////////////
+////////////////////////////////////////////////////////
 
 function render(gl, program, components){
-
-  let oldKeys = Object.keys(reconciler.old);
 
   // program should probably be added to components, honestly
   gl.useProgram(program)
 
   // route components
-  let updated = components.map((component, index) => {
+  const updated = components.map((component) => {
 
     switch(component.type) {
       case 'attribute':
         callOrderDebug && console.log(`${component.name} in switch.`);
-        return renderAttribute(component, index, program, gl);
+        return renderAttribute(component, program, gl);
 
       case 'uniform':
         callOrderDebug && console.log(`${component.name} in switch.`);
-        return renderUniform(component, index, program, gl);
+        return renderUniform(component, program, gl);
 
       case 'element_arr':
         callOrderDebug && console.log('element_arr in switch.');
-        return renderElementArray(component, index, program, gl);
+        return renderElementArray(component, program, gl);
 
       case 'draw':
         callOrderDebug && console.log('draw in switch.');
-        return drawIt(component, index, program, gl);
+        return drawIt(component, program, gl);
 
       default:
-        console.log(component);
         console.error('Cannot render component of type:', component.type);
     }
   });
 
-  // if(oldKeys.length > updated.length) {
-  //   unsetKeys(_.difference(oldKeys, updated));
-  // }
+  reconciler.old = Object.assign(reconciler.old, ...updated.filter(Boolean));
+
 }
 
-// renderers/reconcilers
+////////////////////////////////////////////////////////
+///////////////   RENDER/RECONCILE   ///////////////////
+////////////////////////////////////////////////////////
 
-// function unsetKeys (keys) {
-//   return _.map(keys, (key) => _.unset(reconciler.old, key))
-// }
+// ------------------- ATTRIBUTE ------------------------
 
-function renderAttribute(component, index, program, gl) {
+function renderAttribute(component, program, gl) {
+
+  if (hasNotChanged(component)){
+    return null;
+  }
+
   if(isNew(component)){
-    // if it is new, we do all the things: create location, enable, bind data, then we're done
-    let location = gl.getAttribLocation(program, component.name);
+    const location = gl.getAttribLocation(program, component.shaderVar);
     gl.enableVertexAttribArray(location);
     component.location = location;
     component.pointer.unshift(component.location);
-    reconciler.old[component.name] = Object.assign(component);
-    bindAndSetArray(component, gl, gl.ARRAY_BUFFER);
-    callOrderDebug && console.log(component.name + ' render finished');
-    return component.name;
   }
 
-  // otherwise check if we need to diff and act on that
-  let oldComponent = reconciler.old[component.name];
-
-  if (oldComponent && (oldComponent.name === component.name) && arraysEqual(oldComponent.data, component.data)){
-    // deep equality check means it is same name & data
-  } else {
-    // if it made it through the new check, the location has been set and it exists
-    bindAndSetArray(component, gl, gl.ARRAY_BUFFER);
-    oldComponent = component;
-  }
+  // there is no else here, as there is in the immutablejs example because the data
+  // in this component has been updated in draw and it will get copied for diffing
+  // after this main map call
 
   callOrderDebug && console.log(component.name + ' render finished');
-  return component.name;
+  bindAndSetArray(component, gl, gl.ARRAY_BUFFER);
+
+  // it is when we return an object literal like this that we sever the reference connection
+  // and thus do not have nothing ever change
+  return { [component.name]: component };
 }
 
-function renderUniform(component, index, program, gl) {
-  // if it is new, we do all the things: create location, enable, bind data, then we're done
+// ------------------- UNIFORM ------------------------
+
+function renderUniform(component, program, gl) {
+
+  if (hasNotChanged(component)){
+    return null;
+  }
+
   if(isNew(component)){
-    let location = gl.getUniformLocation(program, component.name);
+    const location = gl.getUniformLocation(program, component.shaderVar);
     component.location = location;
     component.data.unshift(component.location);
-    reconciler.old[component.name] = Object.assign(component);
-    setUniform(component, gl);
-    callOrderDebug && console.log('uniform render finished');
-    return component.name;
   }
 
-  // otherwise check if we need to diff and act on that
-  let oldComponent = reconciler.old[component.name];
-
-  if (oldComponent && (oldComponent.name === component.name) && arraysEqual(oldComponent.data, component.data)){
-    // deep equality check means it is same name & data
-  } else {
-    // if it made it through the new check, the location has been set and it exists
-    component.data.unshift(component.location);
-    setUniform(component, gl);
-    oldComponent = component;
-  }
-
+  setUniform(component, gl);
   callOrderDebug && console.log('uniform render finished');
-  return component.name;
+  return { [component.name]: component };
 }
 
-// TODO: Combine with render attribute?
-function renderElementArray(component, index, program, gl) {
+// ------------------- ELEMENT ARRAY ------------------------
+
+function renderElementArray(component, program, gl) {
+
+  if (hasNotChanged(component)){
+    return null;
+  }
+
   if(isNew(component)){
-    // if it is new, we do all the things: create location, enable, bind data, then we're done
-    let location = gl.getAttribLocation(program, component.name);
+    const location = gl.getAttribLocation(program, component.name);
     component.location = location;
-    reconciler.old[component.name] = Object.assign(component);
-    bindAndSetArray(component, gl, gl.ELEMENT_ARRAY_BUFFER);
-    callOrderDebug && console.log('elem render finished');
-    return component.name;
   }
 
-  // otherwise check if we need to diff and act on that
-  let oldComponent = reconciler.old[component.name];
-
-  if (oldComponent && (oldComponent.name === component.name) && arraysEqual(oldComponent.data, component.data)){
-    // deep equality check means it is same name & data
-  } else {
-    // if it made it through the new check, the location has been set and it exists
-    bindAndSetArray(component, gl, gl.ELEMENT_ARRAY_BUFFER);
-    oldComponent = component;
-  }
+  bindAndSetArray(component, gl, gl.ELEMENT_ARRAY_BUFFER);
   callOrderDebug && console.log('elem render finished');
-  return component.name;
+  return { [component.name]: component };
 }
 
-function drawIt(component, index, program, gl) {
+// ------------------- DRAW ------------------------
+
+function drawIt(component, program, gl) {
+
   // draw is always called
-  reconciler.old[component.name] = Object.assign(component);
   component.drawCall.apply(gl, component.data);
   callOrderDebug && console.log('draw finished');
 
-  return component.name;
+  // so we don't need to save it
+  return null;
 }
 
-// Helpers
+////////////////////////////////////////////////////////
+////////////////////   HELPERS   ////////////////////////
+////////////////////////////////////////////////////////
 
-function isNew(component) {
-  return !component.hasOwnProperty('location');
-}
+// ------------------- GL BUFFER CALLS ------------------------
 
 function bindAndSetArray (component, gl, bufferType){
   let buffer = gl.createBuffer();
@@ -156,6 +137,26 @@ function bindAndSetArray (component, gl, bufferType){
 
 function setUniform(component, gl){
   gl[component.dataType].apply(gl, component.data);
+}
+
+// ------------------- DIFFING FNS ------------------------
+
+function isNew(component) {
+  // this only works across the barrier *beacause* these objects are passed by reference
+  // and we can therefore breach the barrier between drawing file and renderer
+  return !component.hasOwnProperty('location');
+}
+
+function hasNotChanged(component) {
+  const oldComponent = reconciler.old[component.name];
+
+
+  if (component.rerender || !oldComponent) {
+    return false;
+  }
+
+  // this cannot just test component because in this case we draw the mutability division where we store elements
+  return (oldComponent.name === component.name) && arraysEqual(oldComponent.data, component.data);
 }
 
 function arraysEqual (arr1, arr2) {
