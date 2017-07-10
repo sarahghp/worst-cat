@@ -174,7 +174,7 @@ function main() {
       return mat;
     });
 
-    const upadtedComponents = updatedMatrices.map((updatedMatrix) => {
+    const upadtedComponents = updatedMatrices.map((updatedMatrix, idx) => {
 
       const rotation = updatedMatrix.rotation
       const translation = updatedMatrix.translation;
@@ -188,7 +188,7 @@ function main() {
           matrix = m4.zRotate(matrix, rotation[2]);
           matrix = m4.scale(matrix, scale[0], scale[1], scale[2]);
 
-      return Object.assign({}, transformMatrix, { 'data': [false, matrix] });
+      return Object.assign({}, transformMatrix, { 'name': `uniform-${idx}`, 'data': [false, matrix] });
     });
 
     const updatedSequence = upadtedComponents.map((updatedComp, idx) => {
