@@ -22,9 +22,6 @@ function render(gl, components){ // components is a single list of maps
     reconciler.set('unchangedList', immComponents);
   }
 
-  // program should probably be added to components, honestly
-  // gl.useProgram(program)
-
   // route components
   const updated = immComponents.map((component) => {
 
@@ -93,26 +90,23 @@ function renderAttribute(component, gl) {
   const componentName = component.get('name');
   let updatedComponent;
 
-  // if it is new, we do all the things: create location, enable, bind data, then we're done
   if(isNew(componentName)){
     const program = reconciler.getIn(['lastUsedProgram', 'data']);
     const location = gl.getAttribLocation(program, component.get('shaderVar'));
     gl.enableVertexAttribArray(location);
 
     updatedComponent = component.withMutations((comp) => {
-      // we add the location to the front of the pointer, which is used in the bindAndSetArray call
       comp.set('location', location)
           .update('pointer', (p) => p.length < 6 && [].concat(location, p));
     });
 
   } else {
+    // is there a way to write these elses so I am making one fewer copy?
+    // does it matter? since in theory a copy is "cheap"
     const extantComponent = reconciler.get(componentName);
     const newData = component.get('data'); // this is the changed data
 
-    updatedComponent = extantComponent.withMutations((extComp) => {
-      const location = extComp.get('location');
-      extComp.set('data', newData);
-    });
+    updatedComponent = extantComponent.set('data', newData);
   }
 
   bindAndSetArray(updatedComponent, gl, gl.ARRAY_BUFFER);
@@ -153,6 +147,7 @@ function renderUniform(component, gl) {
     updatedComponent = extantComponent.withMutations((extComp) => {
       const location = extComp.get('location');
       extComp.set('dataWithLocation', [].concat(location, newData));
+      // data itself is set when the component overwrites in render
     });
 
   }
