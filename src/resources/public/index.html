@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="css/style.css" rel="stylesheet" type="text/css">
+    <link rel="icon" href="https://clojurescript.org/images/cljs-logo-icon-32.png">
+  </head>
+  <body>
+    <div id="app">
+      <h2>Figwheel template</h2>
+      <p>Checkout your developer console.</p>
+    </div>
+    <canvas id="c" width="1000" height="1000"></canvas>
+    <script id="3d-vertex-shader" type="x-shader/x-vertex">
+
+      attribute vec4 a_position;
+      attribute vec4 a_color;
+
+      uniform mat4 u_matrix;
+
+      varying vec4 v_color;
+
+
+      void main() {
+        // Multiply the position by the matrix.
+        gl_Position = u_matrix * a_position;
+        v_color = a_color;
+      }
+
+    </script>
+    <script id="3d-fragment-shader" type="x-shader/x-fragment">
+
+      // fragment shaders don't have a default precision so we need
+      // to pick one. mediump is a good default
+      precision mediump float;
+      varying vec4 v_color;
+
+
+      void main() {
+        // gl_FragColor is a special variable a fragment shader
+        // is responsible for setting
+        gl_FragColor = v_color;
+      }
+
+    </script>
+
+    <script src="js/helpers.js"></script>
+    <script src="js/compiled/src.js" type="text/javascript"></script>
+  </body>
+</html>
