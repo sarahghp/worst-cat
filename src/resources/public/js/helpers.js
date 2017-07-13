@@ -1,4 +1,27 @@
 ////////////////////////////////////////////////////////
+/////////// 👾 GL HELPER FUNCTIONS /////////////////////
+////////////////////////////////////////////////////////
+
+function initGL(canvas) {
+  const gl = canvas.getContext('webgl');
+
+  if (!gl) {
+   console.log('Wat, no gl.');
+  }
+
+  gl.clearColor(1.0, 1.0, 1.0, 1.0);  // Clear to white, fully opaque
+  gl.clearDepth(1.0);                 // Clear everything
+  gl.enable(gl.DEPTH_TEST);           // Enable depth testing
+  gl.depthFunc(gl.LEQUAL);            // Near things obscure far things
+
+  return gl;
+}
+
+function clear (gl) {
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+}
+
+////////////////////////////////////////////////////////
 ///// 🎨 DRAWING HELPER FUNCTIONS /////////////////////
 ////////////////////////////////////////////////////////
 
@@ -16,7 +39,7 @@ function generateColors() {
 
   for (j=0; j<6; j++) {
     var c = colors[j];
-    
+
     for (var i=0; i<4; i++) {
       generatedColors = generatedColors.concat(c);
     }
@@ -266,23 +289,23 @@ var m4 = {
     ];
   },
 
-  translate: function(m, tx, ty, tz) {
+  translate: function([tx, ty, tz], m) {
     return m4.multiply(m, m4.translation(tx, ty, tz));
   },
 
-  xRotate: function(m, angleInRadians) {
+  xRotate: function(angleInRadians, m) {
     return m4.multiply(m, m4.xRotation(angleInRadians));
   },
 
-  yRotate: function(m, angleInRadians) {
+  yRotate: function(angleInRadians, m) {
     return m4.multiply(m, m4.yRotation(angleInRadians));
   },
 
-  zRotate: function(m, angleInRadians) {
+  zRotate: function(angleInRadians, m) {
     return m4.multiply(m, m4.zRotation(angleInRadians));
   },
 
-  scale: function(m, sx, sy, sz) {
+  scale: function([sx, sy, sz], m) {
     return m4.multiply(m, m4.scaling(sx, sy, sz));
   },
 
@@ -323,10 +346,10 @@ function createShaderFromScriptTag(gl, scriptId, opt_shaderType) {
   if (!shaderScript) {
     throw("*** Error: unknown script element" + scriptId);
   }
- 
+
   // extract the contents of the script tag.
   var shaderSource = shaderScript.text;
- 
+
   // If we didn't pass in a type, use the 'type' from
   // the script tag.
   if (!opt_shaderType) {
@@ -338,7 +361,7 @@ function createShaderFromScriptTag(gl, scriptId, opt_shaderType) {
       throw("*** Error: shader type not set");
     }
   }
- 
+
   return compileShader(gl, shaderSource, opt_shaderType);
 };
 
@@ -354,20 +377,20 @@ function createShaderFromScriptTag(gl, scriptId, opt_shaderType) {
 function compileShader(gl, shaderSource, shaderType) {
   // Create the shader object
   var shader = gl.createShader(shaderType);
- 
+
   // Set the shader source code.
   gl.shaderSource(shader, shaderSource);
- 
+
   // Compile the shader
   gl.compileShader(shader);
- 
+
   // Check if it compiled
   var success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
   if (!success) {
     // Something went wrong during compilation; get the error
     throw "could not compile shader:" + shaderSource + gl.getShaderInfoLog(shader);
   }
- 
+
   return shader;
 }
 
@@ -382,20 +405,20 @@ function compileShader(gl, shaderSource, shaderType) {
 function createProgram(gl, vertexShader, fragmentShader) {
   // create a program.
   var program = gl.createProgram();
- 
+
   // attach the shaders.
   gl.attachShader(program, vertexShader);
   gl.attachShader(program, fragmentShader);
- 
+
   // link the program.
   gl.linkProgram(program);
- 
+
   // Check if it linked.
   var success = gl.getProgramParameter(program, gl.LINK_STATUS);
   if (!success) {
       // something went wrong with the link
       throw ("program filed to link:" + gl.getProgramInfoLog (program));
   }
- 
+
   return program;
 };
