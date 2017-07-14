@@ -21,6 +21,21 @@ function clear (gl) {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 }
 
+function drawIt(drawCall, data, gl) {
+  drawCall.apply(gl, data)
+}
+
+function bindAndSetArray (data, pointer, gl, bufferType){
+  let buffer = gl.createBuffer();
+  gl.bindBuffer(bufferType, buffer);
+  gl.bufferData(bufferType, data, gl.STATIC_DRAW);
+  bufferType === gl.ARRAY_BUFFER && gl.vertexAttribPointer.apply(gl, pointer);
+}
+
+function setUniform(data, dataType, gl){
+  gl[dataType].apply(gl, data);
+}
+
 ////////////////////////////////////////////////////////
 ///// 🎨 DRAWING HELPER FUNCTIONS /////////////////////
 ////////////////////////////////////////////////////////

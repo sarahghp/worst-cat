@@ -112,7 +112,7 @@
 
 (def position-01 {
   :type         "attribute"
-  :shader-var    "a_position"
+  :shader-var   "a_position"
   :name         "positionOne"
   :data         (js/Float32Array. vertices-01)
   :pointer      [3, gl.FLOAT, false, 0, 0]
@@ -120,7 +120,7 @@
 
 (def position-02 {
   :type         "attribute"
-  :shader-var    "a_position"
+  :shader-var   "a_position"
   :name         "positionTwo"
   :data         (js/Float32Array. vertices-02)
   :pointer      [3, gl.FLOAT, false, 0, 0]
@@ -200,26 +200,27 @@
           do-scale)))
 
 (defn gen-sequence []
-  (let [transforms-map (gen-transforms)]
-    [ (select-position)
+  (let [transforms (gen-transforms)]
+    [ program
+      (select-position)
       cube-vertex-index
-      (replace
-        { :data [false (gen-trans-matrix transforms-map)]
-          :rts  transforms-map }
-        transform-mat )
+      (merge transform-mat
+        { :data [false (gen-trans-matrix transforms)]
+          :rts  transforms })
       color
       draw ]))
   (gen-sequence)
 
-(def draw-list (atom
-  [(take 100 (repeatedly gen-sequence))]
- ))
+(def draw-list
+  (take 10 (repeatedly gen-sequence)))
 
 ;; --------------- animation code -----------------
 
 
 (defn update-trans-matrix
   [{ data :data, { :keys [x y z] :as rts } :rts :as transform-mat }]
+
+  (println "IN UPDATE TRANS" transform-mat)
 
   (let [ updated-rts
     (replace
@@ -234,7 +235,7 @@
 
 (defn update-sequence
   [sequence] ;; sequence is the de-refed list
-  ( map
+  (map
     (fn [seq] ;; seq is one element
       (if-not (= (:name seq) "u_matrix")
         seq
@@ -244,10 +245,10 @@
 (println (hello-friend))
 
 (defn animate-cube [gl sequence]
-  (let [updated-seq (update-sequence sequence)]
+  (let [updated-seq (flatten (update-sequence sequence))]
     (js/clear gl)
     (render gl updated-seq)
-    (js/requestAnimationFrame (animate-cube gl updated-seq))))
+    (js/requestAnimationFrame (.bind animate-cube gl updated-seq))))
 
 (js/requestAnimationFrame (.bind animate-cube nil gl draw-list))
 
