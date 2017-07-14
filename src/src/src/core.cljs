@@ -1,5 +1,7 @@
 (ns src.core
-  (:require [reagent.core :as reagent :refer [atom]]))
+  (:require
+    [reagent.core :as reagent :refer [atom]]
+    [worst-cat.core :as worst-cat :refer [hello-friend]]))
 
 (enable-console-print!)
 
@@ -239,20 +241,16 @@
         (update-trans-matrix seq)))
     sequence))
 
-(defn animate-cube [gl sequence]
+(println (hello-friend))
+
+#_(defn animate-cube [gl sequence]
   (let [updated-seq (update-sequence sequence)]
     (js/clear gl)
     (render gl updated-seq)
     (js/requestAnimationFrame (animate-cube gl updated-seq))))
 
-
-
-;; write out fns an then do a compositional sequence again
-;; generate array of transformations & separate positionings (outside main fn)
-;; update rotation on each & generate full transform data & objects
-;; interleave with other maps, including one cube or the other (vertex variations)
-;; (use an atom tree in here)
-;; call requestAnimationFrame
+;; consider moving most of the draw code to its own file and just importing
+;; draw-list, update-sequence
 
 ;; use reagent to render & watch? maybe as v2; just use rAF for now
 
