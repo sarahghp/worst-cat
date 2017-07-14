@@ -112,19 +112,19 @@
 
 (def position-01 {
   :type         "attribute"
-  :shaderVar    "a_position"
+  :shader-var    "a_position"
   :name         "positionOne"
   :data         (js/Float32Array. vertices-01)
   :pointer      [3, gl.FLOAT, false, 0, 0]
-  :rerender     true })
+  :re-render     true })
 
 (def position-02 {
   :type         "attribute"
-  :shaderVar    "a_position"
+  :shader-var    "a_position"
   :name         "positionTwo"
   :data         (js/Float32Array. vertices-02)
   :pointer      [3, gl.FLOAT, false, 0, 0]
-  :rerender     true })
+  :re-render     true })
 
 (def cube-vertex-index {
   :type         "element_arr"
@@ -134,9 +134,9 @@
 (def transform-mat {
   :type       "uniform"
   :name       "u_matrix"
-  :shaderVar  "u_matrix"
+  :shader-var  "u_matrix"
   :data       []
-  :dataType   "uniformMatrix4fv"
+  :data-type   "uniformMatrix4fv"
   :rts        {}
 })
 
@@ -160,14 +160,14 @@
 (def color {
   :type       "attribute"
   :name       "a_color"
-  :shaderVar  "a_color"
+  :shader-var  "a_color"
   :data       (js/Float32Array. (generateColors base-colors))
   :pointer    [4, gl.FLOAT, false, 0, 0]})
 
 (def draw {
    :type      "draw"
    :name      "d_draw"
-   :drawCall  gl.drawElements
+   :draw-call  gl.drawElements
    :data      [gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0]
  })
 
