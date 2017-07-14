@@ -1,7 +1,7 @@
 (ns src.core
   (:require
     [reagent.core :as reagent :refer [atom]]
-    [worst-cat.core :as worst-cat :refer [hello-friend]]))
+    [worst-cat.core :as worst-cat :refer [hello-friend render]]))
 
 (enable-console-print!)
 
@@ -243,11 +243,13 @@
 
 (println (hello-friend))
 
-#_(defn animate-cube [gl sequence]
+(defn animate-cube [gl sequence]
   (let [updated-seq (update-sequence sequence)]
     (js/clear gl)
     (render gl updated-seq)
     (js/requestAnimationFrame (animate-cube gl updated-seq))))
+
+(js/requestAnimationFrame (.bind animate-cube nil gl draw-list))
 
 ;; consider moving most of the draw code to its own file and just importing
 ;; draw-list, update-sequence
@@ -256,15 +258,15 @@
 
 ;; define your app data so that it doesn't get over-written on reload
 
-(defonce app-state (atom {:text "Hello world!"}))
+#_(defonce app-state (atom {:text "Hello world!"}))
 
-(defn hello-world []
+#_(defn hello-world []
   [:h1 (:text @app-state)])
 
-(reagent/render-component [hello-world]
+#_(reagent/render-component [hello-world]
                           (. js/document (getElementById "app")))
 
-(defn on-js-reload []
+#_(defn on-js-reload []
   ;; optionally touch your app-state to force rerendering depending on
   ;; your application
   ;; (swap! app-state update-in [:__figwheel_counter] inc)

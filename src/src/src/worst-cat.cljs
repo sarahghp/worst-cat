@@ -19,8 +19,11 @@
   (or re-render (not (= (@reconciler name) comp ))))
 
 ;; ---------- gl binding & call fns ---------------
+;; might make sense to moce js versions of these
+;; to helpers if this is too annoying to manage
+
 (defn bind-set-array
-  [{:keys [data pointer] :as comp} gl buffer-type]
+  [{:keys [data pointer]} gl buffer-type]
 
   (let [buffer (.createBuffer gl)]
     (.bindBuffer buffer-type buffer)
@@ -28,8 +31,12 @@
 
     (when (= buffer-type (-.ARRAY_BUFFER gl))
       ;; gl.vertexAttribPointer.apply(gl, component.get('pointer'))
-      (.vertexAttribPointer.apply gl pointer)
-    ))
+      (.vertexAttribPointer.apply gl pointer)))
+
+(defn set-uniform
+  [{ :keys [data-with-location data-type]}, gl]
+  ;;  gl[component.get('dataType')].apply(gl, component.get('dataWithLocation'))
+  (.apply (data-type gl) gl data-with-location))
 
 ;; --------------- processing fns -----------------
 
@@ -43,22 +50,55 @@
     { name comp }))
 
 (defn render-attribute
-  [{ :keys [type name data shader-var] :as comp}, gl]
+  [{ :keys [name shader-var] :as comp}, gl]
 
   (when-not (has-changed? comp)
-    (let [location
-          (or
-            (get-in @reconciler [:name :location])
-            (.getAttribLocation gl program shader-var))
+    (let [program (get-in @reconciler [:last-used :data])
+          location
+            (or
+              (get-in @reconciler [name :location])
+              (.getAttribLocation gl program shader-var))
           updated-comp (merge (update-in comp :pointer #(into [location] %)) { :location location })]
 
       (when (is-new? comp)
         (.enableVertexAttribArray gl location))
 
       (bind-set-array comp gl (-.ARRAY_BUFFER gl))
-      { name component })))
+      { name updated-comp })))
 
+(defn render-uniform
+  [{ :keys [name shader-var data] :as comp}, gl]
 
+  (when-not (has-changed? comp)
+    (let [program (get-in @reconciler [:last-used :data])
+          location
+            (or
+              (get-in @reconciler [name :location])
+              (.getUniformLocation gl program shader-var))
+          updated-comp (merge comp { :location location :data-with-location (into [location] [data]) })]
+
+    (set-uniform updated-comp gl)
+    { name updated-comp })))
+
+(defn render-element-arr
+  [{ :keys [name shader-var] :as comp}, gl]
+
+  (when-not (has-changed? comp)
+    (let [program (get-in @reconciler [:last-used :data])
+          location
+            (or
+              (get-in @reconciler [name :location])
+              (.getUniformLocation gl program shader-var))
+          updated-comp (assoc comp :location location )]
+
+          (bind-set-array comp gl (-.ELEMENT_ARRAY_BUFFER))
+          { name updated-comp })))
+
+(defn draw-it
+  [{:keys [data draw-call]} gl]
+  (let [program (get-in @reconciler [:last-used :data])]
+    (.apply (draw-call gl) gl data)
+    nil))
 
 ;; --------------- reconciler -----------------
 
@@ -67,9 +107,9 @@
   (cond
     (= type "program")      (bind-program comp gl)
     (= type "attribute")    (render-attribute comp gl)
-    (= type "uniform")      (renderUniform comp gl)
-    (= type "element_arr")  (renderElementArray comp gl)
-    (= type "draw")         (drawIt comp gl)
+    (= type "uniform")      (render-uniform comp gl)
+    (= type "element_arr")  (render-element-arr comp gl)
+    (= type "draw")         (draw-it comp gl)
     :else (.error js/console "Cannot render component of type:" (type))))
 
 (defn update-reconciler
