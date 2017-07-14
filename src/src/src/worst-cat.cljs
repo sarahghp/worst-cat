@@ -123,7 +123,7 @@
 
 (defn update-reconciler
   [updates]
-  (println "update-reconciler")
+
   (->>  updates
         (filter (complement nil?))
         (into @reconciler)

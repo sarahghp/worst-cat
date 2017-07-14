@@ -185,6 +185,7 @@
 
 (defn gen-trans-matrix
   [{ :keys [ rotation translation scale ]}]
+  (println "ROTATION" rotation)
   (let
     [ translate (partial js/window.m4.translate translation)
       x-rotate  (partial js/window.m4.xRotate (rotation :x))
@@ -201,6 +202,7 @@
 
 (defn gen-sequence []
   (let [transforms (gen-transforms)]
+    (println "TRANSFORMS" transforms)
     [ program
       (select-position)
       cube-vertex-index
@@ -220,17 +222,14 @@
 (defn update-trans-matrix
   [{ data :data, { :keys [x y z] :as rts } :rts :as transform-mat }]
 
-  (println "IN UPDATE TRANS" transform-mat)
-
   (let [ updated-rts
-    (replace
-      { :x (#(+ .01 %) x)
-        :y (#(+ .01 %) y)
-        :z (#(+ .01 %) z) }
-      rts )]
+          (merge rts
+            { :x (#(+ .01 %) x)
+              :y (#(+ .01 %) y)
+              :z (#(+ .01 %) z) })]
 
       (replace
-        {(count data) (gen-trans-matrix updated-rts)}
+        {(dec (count data)) (gen-trans-matrix updated-rts)}
         data)))
 
 (defn update-sequence
@@ -248,7 +247,7 @@
   (let [updated-seq (flatten (update-sequence sequence))]
     (js/clear gl)
     (render gl updated-seq)
-    (js/requestAnimationFrame (.bind animate-cube gl updated-seq))))
+    (js/requestAnimationFrame (.bind animate-cube nil gl updated-seq))))
 
 (js/requestAnimationFrame (.bind animate-cube nil gl draw-list))
 
