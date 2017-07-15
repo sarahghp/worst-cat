@@ -135,7 +135,7 @@
   :type       "uniform"
   :name       "u_matrix"
   :shader-var  "u_matrix"
-  :data       []
+  :data       '()
   :data-type   "uniformMatrix4fv"
   :rts        {}
 })
@@ -185,7 +185,7 @@
 
 (defn gen-trans-matrix
   [{ :keys [ rotation translation scale ]}]
-  (println "ROTATION" rotation)
+  ;(println "ROTATION" rotation)
   (let
     [ translate (partial js/window.m4.translate translation)
       x-rotate  (partial js/window.m4.xRotate (rotation :x))
@@ -202,12 +202,12 @@
 
 (defn gen-sequence []
   (let [transforms (gen-transforms)]
-    (println "TRANSFORMS" transforms)
+    ;(println "TRANSFORMS" transforms)
     [ program
       (select-position)
       cube-vertex-index
       (merge transform-mat
-        { :data [false (gen-trans-matrix transforms)]
+        { :data (list false (gen-trans-matrix transforms))
           :rts  transforms })
       color
       draw ]))
@@ -220,17 +220,18 @@
 
 
 (defn update-trans-matrix
-  [{ data :data, { :keys [x y z] :as rts } :rts :as transform-mat }]
+  [{ data :data {{ :keys [x y z] :as rotation } :rotation :as rts } :rts :as transform-mat }]
 
-  (let [ updated-rts
-          (merge rts
+  (let [ updated-rotation
+          (merge rotation
             { :x (#(+ .01 %) x)
               :y (#(+ .01 %) y)
-              :z (#(+ .01 %) z) })]
+              :z (#(+ .01 %) z) })
+          updated-rts (merge rts { :rotation updated-rotation })
+          updated-data
+            (replace {(dec (count data)) (gen-trans-matrix updated-rts)} data)]
 
-      (replace
-        {(dec (count data)) (gen-trans-matrix updated-rts)}
-        data)))
+    (merge transform-mat { :rts updated-rts :data updated-data })))
 
 (defn update-sequence
   [sequence] ;; sequence is the de-refed list

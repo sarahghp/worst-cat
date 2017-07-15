@@ -5,6 +5,7 @@
   "hello from the other file")
 
 (def reconciler (atom {}))
+(def current-program (atom {}))
 (def prev-list (atom {}))
 
 
@@ -30,12 +31,10 @@
     (.bufferData buffer-type data gl.STATIC_DRAW))
 
     (when (= buffer-type (-.ARRAY_BUFFER gl))
-      ;; gl.vertexAttribPointer.apply(gl, component.get('pointer'))
       (.vertexAttribPointer.apply gl pointer)))
 
 #_(defn set-uniform
   [{ :keys [data-with-location data-type]}, gl]
-  ;;  gl[component.get('dataType')].apply(gl, component.get('dataWithLocation'))
   (.apply (data-type gl) gl data-with-location))
 
 ;; --------------- processing fns -----------------
@@ -43,9 +42,8 @@
 (defn bind-program
   [{ :keys [type name data] :as comp}, gl]
 
-  (when-not (= (@reconciler :last-used) comp)
-    (when (is-new? comp)
-      (swap! reconciler #(merge % {:last-used comp})))
+  (when-not (= @current-program comp)
+    (reset! current-program data)
     (.useProgram gl data)
     { name comp }))
 
@@ -53,7 +51,7 @@
   [{ :keys [name shader-var data] :as comp}, gl]
 
   (when (has-changed? comp)
-    (let [program (get-in @reconciler [:last-used :data])
+    (let [program @current-program
           location
             (or
               (get-in @reconciler [name :location])
@@ -71,12 +69,12 @@
   [{ :keys [name shader-var data data-type] :as comp}, gl]
 
   (when (has-changed? comp)
-    (let [program (get-in @reconciler [:last-used :data])
+    (let [program @current-program
           location
             (or
               (get-in @reconciler [name :location])
               (.getUniformLocation gl program shader-var))
-          data-with-location (into [location] data)
+          data-with-location (conj data location)
           updated-comp (merge comp { :location location :data-with-location data-with-location })]
 
     (js/setUniform (into-array data-with-location) data-type gl)
@@ -85,8 +83,10 @@
 (defn render-element-arr
   [{ :keys [name shader-var data data-type] :as comp}, gl]
 
+  ;;(println "RENDER EL ARR" @reconciler)
+
   (when (has-changed? comp)
-    (let [program (get-in @reconciler [:last-used :data])
+    (let [program @current-program
           location
             (or
               (get-in @reconciler [name :location])
@@ -112,14 +112,14 @@
 
 (defn process
   [gl {:keys [type] :as comp}]
-  (println "IN PROCESS" type)
+  ;(println "IN PROCESS" type comp)
   (cond
     (= type "program")      (bind-program comp gl)
     (= type "attribute")    (render-attribute comp gl)
     (= type "uniform")      (render-uniform comp gl)
     (= type "element_arr")  (render-element-arr comp gl)
     (= type "draw")         (draw-it comp gl)
-    :else (.error js/console "Cannot render component of type:" (type))))
+    :else (.error js/console "Cannot render component of type:" type)))
 
 (defn update-reconciler
   [updates]
