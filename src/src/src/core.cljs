@@ -193,6 +193,14 @@
       z-rotate  (partial js/window.m4.zRotate (rotation :z))
       do-scale  (partial js/window.m4.scale scale)]
 
+      ;(println "XYZ ROTATE" (do-scale (z-rotate (y-rotate (x-rotate (translate (js/window.m4.projection width height 400)))))))
+      #_(println "WITH THREAD" (->>  (js/window.m4.projection width height 400)
+            translate
+            x-rotate
+            y-rotate
+            z-rotate
+            do-scale))
+
     (->>  (js/window.m4.projection width height 400)
           translate
           x-rotate
@@ -214,7 +222,7 @@
   (gen-sequence)
 
 (def draw-list
-  (take 10 (repeatedly gen-sequence)))
+  (take 100 (repeatedly gen-sequence)))
 
 ;; --------------- animation code -----------------
 
@@ -228,8 +236,7 @@
               :y (#(+ .01 %) y)
               :z (#(+ .01 %) z) })
           updated-rts (merge rts { :rotation updated-rotation })
-          updated-data
-            (replace {(dec (count data)) (gen-trans-matrix updated-rts)} data)]
+          updated-data (list false (gen-trans-matrix updated-rts))]
 
     (merge transform-mat { :rts updated-rts :data updated-data })))
 
