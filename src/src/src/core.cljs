@@ -1,7 +1,7 @@
 (ns src.core
   (:require
-    [reagent.core :as reagent :refer [atom]]
-    [worst-cat.core :as worst-cat :refer [hello-friend render]]))
+    ;[reagent.core :as reagent :refer [atom]]
+    [worst-cat.core :as worst-cat :refer [render]]))
 
 (enable-console-print!)
 
@@ -14,7 +14,6 @@
 ;; --------------- get context and program ---------------
 (def canvas (.getElementById js/document "c"))
 (def gl (js/initGL canvas))
-;(def program (js/createProgramFromScripts gl "3d-vertex-shader" "3d-fragment-shader"))
 
 (def width (.-canvas.clientWidth gl))
 (def height (.-canvas.clientHeight gl))
@@ -150,12 +149,10 @@
 
 (defn generateColors
   [c-vecs]
-  (defn normalize [c]
-    (/ c 255))
   (->> c-vecs
        (mapcat #(repeat 4 %))
        flatten
-       (map normalize)))
+       (map #(/ % 255))))
 
 (def color {
   :type       "attribute"
@@ -185,21 +182,12 @@
 
 (defn gen-trans-matrix
   [{ :keys [ rotation translation scale ]}]
-  ;(println "ROTATION" rotation)
   (let
     [ translate (partial js/window.m4.translate translation)
       x-rotate  (partial js/window.m4.xRotate (rotation :x))
       y-rotate  (partial js/window.m4.yRotate (rotation :y))
       z-rotate  (partial js/window.m4.zRotate (rotation :z))
       do-scale  (partial js/window.m4.scale scale)]
-
-      ;(println "XYZ ROTATE" (do-scale (z-rotate (y-rotate (x-rotate (translate (js/window.m4.projection width height 400)))))))
-      #_(println "WITH THREAD" (->>  (js/window.m4.projection width height 400)
-            translate
-            x-rotate
-            y-rotate
-            z-rotate
-            do-scale))
 
     (->>  (js/window.m4.projection width height 400)
           translate
@@ -210,49 +198,45 @@
 
 (defn gen-sequence []
   (let [transforms (gen-transforms)]
-    ;(println "TRANSFORMS" transforms)
     [ program
       (select-position)
       cube-vertex-index
-      (merge transform-mat
-        { :data (list false (gen-trans-matrix transforms))
-          :rts  transforms })
+      (assoc transform-mat
+        :data (list false (gen-trans-matrix transforms))
+        :rts  transforms )
       color
       draw ]))
-  (gen-sequence)
 
 (def draw-list
   (take 100 (repeatedly gen-sequence)))
 
 ;; --------------- animation code -----------------
 
-
 (defn update-trans-matrix
   [{ data :data {{ :keys [x y z] :as rotation } :rotation :as rts } :rts :as transform-mat }]
 
   (let [ updated-rotation
-          (merge rotation
-            { :x (#(+ .01 %) x)
-              :y (#(+ .01 %) y)
-              :z (#(+ .01 %) z) })
-          updated-rts (merge rts { :rotation updated-rotation })
+          { :x (#(+ .01 %) x)
+            :y (#(+ .01 %) y)
+            :z (#(+ .01 %) z) }
+          updated-rts (assoc rts :rotation updated-rotation) ;; look at the perf of all these merges
           updated-data (list false (gen-trans-matrix updated-rts))]
 
-    (merge transform-mat { :rts updated-rts :data updated-data })))
+    (assoc transform-mat :rts updated-rts :data updated-data )))
 
 (defn update-sequence
-  [sequence] ;; sequence is the de-refed list
+  [sequence]
   (map
     (fn [seq] ;; seq is one element
-      (if-not (= (:name seq) "u_matrix")
+      (if-not (identical? (:name seq) "u_matrix")
         seq
         (update-trans-matrix seq)))
     sequence))
 
-(println (hello-friend))
+;; consider that mapping even with a no-op *has* a cost
 
 (defn animate-cube [gl sequence]
-  (let [updated-seq (flatten (update-sequence sequence))]
+  (let [updated-seq (flatten (update-sequence sequence))] ;; flatten can be slow
     (js/clear gl)
     (render gl updated-seq)
     (js/requestAnimationFrame (.bind animate-cube nil gl updated-seq))))
@@ -263,19 +247,3 @@
 ;; draw-list, update-sequence
 
 ;; use reagent to render & watch? maybe as v2; just use rAF for now
-
-;; define your app data so that it doesn't get over-written on reload
-
-#_(defonce app-state (atom {:text "Hello world!"}))
-
-#_(defn hello-world []
-  [:h1 (:text @app-state)])
-
-#_(reagent/render-component [hello-world]
-                          (. js/document (getElementById "app")))
-
-#_(defn on-js-reload []
-  ;; optionally touch your app-state to force rerendering depending on
-  ;; your application
-  ;; (swap! app-state update-in [:__figwheel_counter] inc)
-)

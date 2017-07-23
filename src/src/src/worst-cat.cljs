@@ -1,9 +1,5 @@
 (ns worst-cat.core)
 
-(defn hello-friend
-  []
-  "hello from the other file")
-
 (def reconciler (atom {}))
 (def current-program (atom {}))
 (def prev-list (atom {}))
@@ -12,15 +8,21 @@
 ;; --------------- test fns -----------------
 
 (defn is-new?
-  [{:keys [name]}]
+  [{ :keys [name] }]
   (not (contains? @reconciler name)))
 
-(defn has-changed?
+;; this version uses deep equality on the whole comp (=)
+#_(defn has-changed?
   [{ :keys [name re-render] :as comp }]
   (or re-render (not (= (@reconciler name) comp ))))
 
+;; this version uses the data equality test & is rather faster
+(defn has-changed?
+  [{ :keys [name re-render] :as comp }]
+  (or re-render (not (= (get-in @reconciler [name :data]) (comp :data) ))))
+
 ;; ---------- gl binding & call fns ---------------
-;; might make sense to moce js versions of these
+;; moved js versions of these
 ;; to helpers if this is too annoying to manage
 
 #_(defn bind-set-array
@@ -42,7 +44,7 @@
 (defn bind-program
   [{ :keys [type name data] :as comp}, gl]
 
-  (when-not (= @current-program comp)
+  (when-not (= @current-program data)
     (reset! current-program data)
     (.useProgram gl data)
     { name comp }))
@@ -57,7 +59,7 @@
               (get-in @reconciler [name :location])
               (.getAttribLocation gl program shader-var))
           updated-pointer (into [location] (comp :pointer))
-          updated-comp (merge comp {:pointer updated-pointer :location location })]
+          updated-comp (assoc comp :pointer updated-pointer :location location)] ; change these to assoc
 
       (when (is-new? comp)
         (.enableVertexAttribArray gl location))
@@ -75,15 +77,13 @@
               (get-in @reconciler [name :location])
               (.getUniformLocation gl program shader-var))
           data-with-location (conj data location)
-          updated-comp (merge comp { :location location :data-with-location data-with-location })]
+          updated-comp (assoc comp :location location :data-with-location data-with-location )]
 
     (js/setUniform (into-array data-with-location) data-type gl)
     { name updated-comp })))
 
 (defn render-element-arr
   [{ :keys [name shader-var data data-type] :as comp}, gl]
-
-  ;;(println "RENDER EL ARR" @reconciler)
 
   (when (has-changed? comp)
     (let [program @current-program
@@ -107,26 +107,24 @@
   (.apply (aget gl draw-call) gl (into-array data))
   nil)
 
-
 ;; --------------- reconciler -----------------
 
 (defn process
   [gl {:keys [type] :as comp}]
-  ;(println "IN PROCESS" type comp)
   (cond
-    (= type "program")      (bind-program comp gl)
-    (= type "attribute")    (render-attribute comp gl)
-    (= type "uniform")      (render-uniform comp gl)
-    (= type "element_arr")  (render-element-arr comp gl)
-    (= type "draw")         (draw-it comp gl)
+    (identical? type "program")      (bind-program comp gl) ;; identical over = for speeeeeed
+    (identical? type "attribute")    (render-attribute comp gl)
+    (identical? type "uniform")      (render-uniform comp gl)
+    (identical? type "element_arr")  (render-element-arr comp gl)
+    (identical? type "draw")         (draw-it comp gl)
     :else (.error js/console "Cannot render component of type:" type)))
 
 (defn update-reconciler
   [updates]
 
   (->>  updates
-        (filter (complement nil?))
-        (into @reconciler)
+        (remove nil?)
+        (into @reconciler) ;; into is fast
         (reset! reconciler)))
 
 (defn map-and-set-list
@@ -138,9 +136,7 @@
   [gl components]
   (let
     [ updated-components
-      (if-not (= (:list @reconciler) components)
+      (if-not (identical? @prev-list components)
         (map-and-set-list gl components)
         []) ]
-
-    ;(println "UDATED COPS" updated-components)
     (update-reconciler updated-components)))
