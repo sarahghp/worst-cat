@@ -1,7 +1,7 @@
 (ns src.core
   (:require
     ;[reagent.core :as reagent :refer [atom]]
-    [worst-cat.core :as worst-cat :refer [render]]))
+    [worst_cat.core :as worst-cat :refer [render]]))
 
 (enable-console-print!)
 
@@ -208,7 +208,7 @@
       draw ]))
 
 (def draw-list
-  (take 100 (repeatedly gen-sequence)))
+  (take 1000 (repeatedly gen-sequence)))
 
 ;; --------------- animation code -----------------
 
@@ -219,7 +219,7 @@
           { :x (#(+ .01 %) x)
             :y (#(+ .01 %) y)
             :z (#(+ .01 %) z) }
-          updated-rts (assoc rts :rotation updated-rotation) ;; look at the perf of all these merges
+          updated-rts (assoc rts :rotation updated-rotation)
           updated-data (list false (gen-trans-matrix updated-rts))]
 
     (assoc transform-mat :rts updated-rts :data updated-data )))

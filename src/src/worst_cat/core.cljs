@@ -1,4 +1,4 @@
-(ns worst-cat.core)
+(ns worst_cat.core)
 
 (def reconciler (atom {}))
 (def current-program (atom {}))
