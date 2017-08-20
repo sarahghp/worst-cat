@@ -5,7 +5,7 @@
   <title>C U B E</title>
 </head>
 <body>
-  <canvas id="c" width="400" height="500"></canvas>
+  <canvas id="c" width="1000" height="1000"></canvas>
   <script id="3d-vertex-shader" type="x-shader/x-vertex">
 
     attribute vec4 a_position;
@@ -114,76 +114,82 @@
         20, 21, 22,     20, 22, 23    // left
       ];
 
-      // create, link, and use program
       var program = createProgramFromScripts(gl, '3d-vertex-shader', '3d-fragment-shader');
-      gl.useProgram(program);
-
-      // set attribute and uniform locations
       var positionLocation = gl.getAttribLocation(program, "a_position");
-      gl.enableVertexAttribArray(positionLocation);
-
       var colorLocation = gl.getAttribLocation(program, "a_color");
-      gl.enableVertexAttribArray(colorLocation);
-
       var matrixLocation = gl.getUniformLocation(program, "u_matrix");
-
       var positionBuffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-      gl.vertexAttribPointer(
-            positionLocation, 3, gl.FLOAT, false, 0, 0);
-
       var colorBuffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-      gl.vertexAttribPointer(
-          colorLocation, 4, gl.FLOAT, false, 0, 0);
-
       var cubeVerticesIndexBuffer = gl.createBuffer();
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVerticesIndexBuffer);
 
-      // Now send the element array to GL
 
-      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
-          new Uint16Array(cubeVertexIndices), gl.STATIC_DRAW);
+      var initialMatrix = {
+        translation  : [gl.canvas.clientWidth/3, gl.canvas.clientHeight/3, 40],
+        rotation     : [1, 1, 1],
+        scale        : [1, 1, 1],
+      };
+
+      let multiMatrix = Array(1000).fill(0).map((n) => {
+        let myMat = Object.assign({}, initialMatrix);
+        myMat.translation = [Math.random() * 1000, Math.random() * 1000, Math.random() * 40];
+        myMat.rotation = [Math.random() * 7.28, Math.random() * 7.28, 1];
+        return myMat;
+      });
 
       function drawCube(translation, rotation, scale){
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        rotation = rotation.map((r, i) => r += (.01 * i))
-        translation = translation.map((t, i) => {
-          if (i < 2){
-            return clamp(t + plusOrMinus(0.1), 0, 400, i + 1);
-          } else {
-            return t;
-          }
-        })
+        multiMatrix.forEach((mat) => {
+          // create, link, and use program
+          gl.useProgram(program);
 
-        // Compute the matrix
-        var matrix = m4.projection(gl.canvas.clientWidth, gl.canvas.clientHeight, 400);
-        matrix = m4.translate(matrix, translation[0], translation[1], translation[2]);
-        matrix = m4.xRotate(matrix, rotation[0]);
-        matrix = m4.yRotate(matrix, rotation[1]);
-        matrix = m4.zRotate(matrix, rotation[2]);
-        matrix = m4.scale(matrix, scale[0], scale[1], scale[2]);
+          // set attribute and uniform locations
+          gl.enableVertexAttribArray(positionLocation);
+          gl.enableVertexAttribArray(colorLocation);
 
-        // Set the matrix.
-        gl.uniformMatrix4fv(matrixLocation, false, matrix);
+          gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+          gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+          gl.vertexAttribPointer(
+                positionLocation, 3, gl.FLOAT, false, 0, 0);
 
-        // Draw the cube.
-        gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+          gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+          gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+          gl.vertexAttribPointer(
+              colorLocation, 4, gl.FLOAT, false, 0, 0);
+
+          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVerticesIndexBuffer);
+
+          // Now send the element array to GL
+          gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
+              new Uint16Array(cubeVertexIndices), gl.STATIC_DRAW);
+
+          mat.rotation = mat.rotation.map((r, i) => r += (.01 * i));
+
+          // Compute the matrix
+          var matrix = m4.projection(1000, 1000, 400);
+              matrix = m4.translate(matrix, mat.translation[0], mat.translation[1], mat.translation[2]);
+              matrix = m4.xRotate(matrix, mat.rotation[0]);
+              matrix = m4.yRotate(matrix, mat.rotation[1]);
+              matrix = m4.zRotate(matrix, mat.rotation[2]);
+              matrix = m4.scale(matrix, mat.scale[0], mat.scale[1], mat.scale[2]);
+
+          // Set the matrix.
+          gl.uniformMatrix4fv(matrixLocation, false, matrix);
+
+          // Draw the cube.
+          gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+
+        });
 
         requestAnimationFrame(drawCube.bind(null, translation, rotation, scale))
       }
 
-      var initTranslation = [gl.canvas.clientWidth/3, gl.canvas.clientHeight/3, 40],
+      var initTranslation = [Math.random() * gl.canvas.clientWidth, Math.random() * gl.canvas.clientHeight, 40],
           initRotation    = [1, 1, 1],
           initScale       = [1, 1, 1];
 
       requestAnimationFrame(drawCube.bind(null, initTranslation, initRotation, initScale))
     }
-
-
 
 
     ////////////////////////////////////////////////////////
