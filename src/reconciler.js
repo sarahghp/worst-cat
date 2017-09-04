@@ -1,5 +1,3 @@
-const callOrderDebug = false;
-
 let reconciler = {
   old: {},
 };
@@ -18,19 +16,15 @@ function render(gl, program, components){
 
     switch(component.type) {
       case 'attribute':
-        callOrderDebug && console.log(`${component.name} in switch.`);
         return renderAttribute(component, program, gl);
 
       case 'uniform':
-        callOrderDebug && console.log(`${component.name} in switch.`);
         return renderUniform(component, program, gl);
 
       case 'element_arr':
-        callOrderDebug && console.log('element_arr in switch.');
         return renderElementArray(component, program, gl);
 
       case 'draw':
-        callOrderDebug && console.log('draw in switch.');
         return drawIt(component, program, gl);
 
       default:
@@ -65,7 +59,6 @@ function renderAttribute(component, program, gl) {
   // in this component has been updated in draw and it will get copied for diffing
   // after this main map call
 
-  callOrderDebug && console.log(component.name + ' render finished');
   bindAndSetArray(component, gl, gl.ARRAY_BUFFER);
 
   // it is when we return an object literal like this that we sever the reference connection
@@ -88,7 +81,6 @@ function renderUniform(component, program, gl) {
   }
 
   setUniform(component, gl);
-  callOrderDebug && console.log('uniform render finished');
   return { [component.name]: component };
 }
 
@@ -106,7 +98,6 @@ function renderElementArray(component, program, gl) {
   }
 
   bindAndSetArray(component, gl, gl.ELEMENT_ARRAY_BUFFER);
-  callOrderDebug && console.log('elem render finished');
   return { [component.name]: component };
 }
 
@@ -116,7 +107,6 @@ function drawIt(component, program, gl) {
 
   // draw is always called
   component.drawCall.apply(gl, component.data);
-  callOrderDebug && console.log('draw finished');
 
   // so we don't need to save it
   return null;

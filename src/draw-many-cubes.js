@@ -93,7 +93,7 @@ function main() {
     name: 'positionOne',
     data: new Float32Array(verticesOne),
     pointer: [3, gl.FLOAT, false, 0, 0],
-    rerender: true,
+    // rerender: true,
   };
 
   let positionTwo = {
@@ -102,7 +102,7 @@ function main() {
     name: 'positionTwo',
     data: new Float32Array(verticesTwo),
     pointer: [3, gl.FLOAT, false, 0, 0],
-    rerender: true,
+    // rerender: true,
   };
 
   const cubeVertexIndices = [
@@ -127,7 +127,7 @@ function main() {
     scale        : [1, 1, 1],
   };
 
-  let multiMatrix = Array(10).fill(0).map((n) => {
+  let multiMatrix = Array(3000).fill(0).map((n) => {
     let myMat = Object.assign({}, initialMatrix);
     myMat.translation = [Math.random() * 1000, Math.random() * 1000, Math.random() * 40];
     myMat.rotation = [Math.random() * 7.28, Math.random() * 7.28, 1];
