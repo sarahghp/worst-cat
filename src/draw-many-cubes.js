@@ -104,7 +104,7 @@ function main() {
     name: 'positionOne',
     data: new Float32Array(verticesOne),
     pointer: [3, gl.FLOAT, false, 0, 0],
-    // rerender: true,
+    rerender: false
   });
 
   let positionTwo = I.Map({
@@ -113,7 +113,7 @@ function main() {
     name: 'positionTwo',
     data: new Float32Array(verticesTwo),
     pointer: [3, gl.FLOAT, false, 0, 0],
-    // rerender: true,
+    rerender: false
   });
 
   const cubeVertexIndices = [
@@ -137,17 +137,7 @@ function main() {
     scale        : [1, 1, 1],
   });
 
-  // this is taking a map, setting it to an object, then reinstantiating it as a map
-  // let's rewrite below and see if it changes
-  // let multiMatrixList = I.List(Array(1000).fill(0).map((n) => {
-  //   let myMat = Object.assign({}, initialMatrix);
-  //   myMat.translation = [Math.random() * 1000, Math.random() * 1000, Math.random() * 40];
-  //   myMat.rotation = [Math.random() * 7.28, Math.random() * 7.28, 1];
-  //   myMat.scale = [1, 1, 1];
-  //   return I.Map(myMat);
-  // }));
-
-  let multiMatrixList = I.List(Array(3000).fill(0).map(() => {
+  let multiMatrixList = I.List(Array(10).fill(0).map(() => {
     return initialMatrix.withMutations((initMat) => {
       initMat.set('translation', [Math.random() * 1000, Math.random() * 1000, Math.random() * 40]);
       initMat.set('rotation', [Math.random() * 7.28, Math.random() * 7.28, 1]);
@@ -195,7 +185,7 @@ function main() {
       return mat.update('rotation', (rot) => rot.map( (r, i) => r += (.01 * i) ));
     });
 
-    const upadtedComponents = updatedMatrices.map((updatedMatrix, idx) => {
+    const updatedComponents = updatedMatrices.map((updatedMatrix, idx) => {
 
       const rotation = updatedMatrix.get('rotation')
       const translation = updatedMatrix.get('translation');
@@ -218,9 +208,23 @@ function main() {
 
     // Add into draw sequence
 
-    const updatedSequence = upadtedComponents.flatMap((updatedComp, idx) => {
+    const totalComponents = updatedComponents.size;
+    const midwayComponent = Math.floor(totalComponents/2);
 
-      let position = (idx % 2 === 0) ? positionOne : positionTwo;
+    const updatedSequence = updatedComponents.flatMap((updatedComp, idx) => {
+
+      let position;
+
+      if (idx == 0) {
+        position = positionOne.set('rerender', true);
+      } else if (idx < midwayComponent) {
+        position = positionOne;
+      } else if (idx == midwayComponent) {
+        position = positionTwo.set('rerender', true);
+      } else {
+        position = positionTwo;
+      }
+
       return [components[0], position, components[2], updatedComp, components[4], components[5]];
     });
 
