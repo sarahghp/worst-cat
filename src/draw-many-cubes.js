@@ -93,7 +93,7 @@ function main() {
     name: 'positionOne',
     data: new Float32Array(verticesOne),
     pointer: [3, gl.FLOAT, false, 0, 0],
-    // rerender: true,
+    rerender: false,
   };
 
   let positionTwo = {
@@ -102,7 +102,7 @@ function main() {
     name: 'positionTwo',
     data: new Float32Array(verticesTwo),
     pointer: [3, gl.FLOAT, false, 0, 0],
-    // rerender: true,
+    rerender: false,
   };
 
   const cubeVertexIndices = [
@@ -174,7 +174,7 @@ function main() {
       return mat;
     });
 
-    const upadtedComponents = updatedMatrices.map((updatedMatrix, idx) => {
+    const updatedComponents = updatedMatrices.map((updatedMatrix, idx) => {
 
       const rotation = updatedMatrix.rotation
       const translation = updatedMatrix.translation;
@@ -191,8 +191,26 @@ function main() {
       return Object.assign({}, transformMatrix, { 'name': `uniform-${idx}`, 'data': [false, matrix] });
     });
 
-    const updatedSequence = upadtedComponents.map((updatedComp, idx) => {
-      const position = (idx % 2 === 0) ? positionOne : positionTwo;
+    const totalComponents = updatedComponents.length;
+    const midwayComponent = Math.floor(totalComponents/2);
+
+    const updatedSequence = updatedComponents.map((updatedComp, idx) => {
+
+      let position;
+
+      if (idx == 0) {
+        positionOne.rerender = true;
+        position = positionOne;
+        positionOne.rerender = false;
+      } else if (idx < midwayComponent) {
+        position = positionOne;
+      } else if (idx == midwayComponent) {
+        positionTwo.rerender = true;
+        position = positionTwo;
+        positionTwo.rerender = false;
+      } else {
+        position = positionTwo;
+      }
 
       return [position, components[1], updatedComp, components[3], components[4]];
     });
