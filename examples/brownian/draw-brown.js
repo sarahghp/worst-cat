@@ -1,10 +1,10 @@
 console.log('Loaded.');
 window.onload = main;
 
-var POINTS     = 1000,
+var POINTS     = 10,
     VARIATION  = 20,
-    COLORSHIFT = 0.05,
-    LINES      = 2;
+    COLORSHIFT = 0.02,
+    LINES      = 10;
 
 function main() {
 
@@ -33,14 +33,19 @@ function main() {
     type: 'attribute',
     name: 'a_position',
     shaderVar: 'a_position',
+    unconvertedData: [],
     data: [],
-    pointer: [3, gl.FLOAT, false, 0, 0],
-    // counter: 0
+    pointer: [],
   };
 
   var multiPos = Array(LINES).fill(0).map((n, idx) => {
     var vertices = initVertices(gl, POINTS, clientWidth, clientHeight);
-    var myPos = Object.assign({}, position, { data: vertices, name: `${idx}-position` });
+    var updated = {
+      unconvertedData: vertices,
+      name: `${idx}-position`,
+      pointer: [3, gl.FLOAT, false, 0, 0]
+    }
+    var myPos = Object.assign({}, position, updated);
     return myPos;
   });
 
@@ -48,18 +53,20 @@ function main() {
     type: 'attribute',
     name: 'a_color',
     shaderVar: 'a_color',
+    unconvertedData: [],
     data: [],
-    pointer: [4, gl.FLOAT, false, 0, 0],
+    pointer: [],
     currentColor: [],
     counter: 0
   };
 
+  var colors = initColors(POINTS, [0.325, 0.325, 0.36]);
   var multiColor = Array(LINES).fill(0).map((n, idx) => {
-    var colors = initColors(POINTS);
     var updated = {
       currentColor: [colors[0], colors[1], colors[2], colors[3]],
-      data: colors,
-      name: `${idx}-color`
+      unconvertedData: colors,
+      name: `${idx}-color`,
+      pointer: [4, gl.FLOAT, false, 0, 0],
     };
 
     return Object.assign({}, baseColor, updated);
@@ -78,7 +85,7 @@ function main() {
   function drawLine(gl, positionArray, colorsArray, variation, colorShift){
 
     var updatedVertices = positionArray.map((pos) => {
-      var vertices = Array.from(pos.data);
+      var vertices = pos.unconvertedData;
 
       // new point
       var x = clamp(vertices[vertices.length - 3] + plusOrMinus(variation), 0, gl.canvas.width, variation),
@@ -88,6 +95,7 @@ function main() {
       // add new point, remove old, mutation is fun
       var nextVertices = vertices.slice(3);
       nextVertices.push(x, y, 0);
+      pos.unconvertedData = nextVertices;
       pos.data = new Float32Array(nextVertices);
 
       return pos;
@@ -112,16 +120,16 @@ function main() {
       b = color.currentColor[2];
       a = color.currentColor[3];
 
-      var lastColors = Array.from(color.data);
+      var lastColors = color.unconvertedData;
       var nextColors = lastColors.slice(4);
       nextColors.push(r, g, b, a);
+      color.unconvertedData = nextColors;
       color.data = new Float32Array(nextColors);
 
       return color;
     });
 
     var updatedComponents = updatedVertices.map((comp, idx) => {
-      console.log([resolution, updatedColors[idx], comp, draw]);
       return [resolution, updatedColors[idx], comp, draw];
     });
 
@@ -149,20 +157,23 @@ function initGL(canvas) {
 
 function initVertices(gl, times, width, height){
   var arr = [];
+  var offsetX = Math.random() * width;
+  var offsetY = Math.random() * height;
+
 
   for (var i = 0; i < times * 3; i += 3){
-    arr.push(width/2, height/2, 0);
+    arr.push(offsetX, offsetY, 0);
   }
 
   return arr;
 }
 
-function initColors(times){
+function initColors(times, seed){
 
   var arr = [],
-      r = Math.random(),
-      g = Math.random(),
-      b = Math.random(),
+      r = seed[0] || Math.random(),
+      g = seed[1] || Math.random(),
+      b = seed[2] || Math.random(),
       a = 1;
 
   for (var i = 0; i < times * 4; i += 4){
