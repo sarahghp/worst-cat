@@ -45,11 +45,12 @@ function render(gl, program, components){
 function renderAttribute(component, program, gl) {
 
   if (hasNotChanged(component)){
-    // console.log('attribute not changed', component);
+    console.log('attribute not changed', component.name);
     return null;
   }
 
   if(isNew(component)){
+    console.log('is new', component.name);
     const location = gl.getAttribLocation(program, component.shaderVar);
     gl.enableVertexAttribArray(location);
     component.location = location;
@@ -123,6 +124,7 @@ function bindAndSetArray (component, gl, bufferType){
   let buffer = gl.createBuffer();
   gl.bindBuffer(bufferType, buffer);
   gl.bufferData(bufferType, component.data, gl.STATIC_DRAW);
+  console.log(component.pointer);
   bufferType === gl.ARRAY_BUFFER && gl.vertexAttribPointer.apply(gl, component.pointer);
 }
 

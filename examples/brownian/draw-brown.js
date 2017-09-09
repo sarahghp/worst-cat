@@ -1,6 +1,11 @@
 console.log('Loaded.');
 window.onload = main;
 
+var POINTS     = 1000,
+    VARIATION  = 20,
+    COLORSHIFT = 0.05,
+    LINES      = 2;
+
 function main() {
 
   // create context
@@ -13,28 +18,16 @@ function main() {
   var program = createProgramFromScripts(gl, '2d-vertex-shader', '2d-fragment-shader');
   gl.useProgram(program);
 
-  // // set attribute and uniform locations
-  // var positionAttributeLocation = gl.getAttribLocation(program, "a_position");
-  // var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
-  // var colorLocation = gl.getAttribLocation(program, "a_color");
-
-
   // set the uniforms
   var resolution = {
     type: 'uniform',
     name: 'u_resolution',
     shaderVar: 'u_resolution',
-    data: [[clientWidth, clientHeight ]],
+    data: [[clientWidth, clientHeight]],
     dataType: 'uniform2fv'
   };
 
   // create geometry & color
-
-  var points    = 1000,
-      variation = 20;
-
-  var vertices = initVertices(gl, points, clientWidth, clientHeight),
-      colors   = initColors(points);
 
   var position = {
     type: 'attribute',
@@ -42,63 +35,100 @@ function main() {
     shaderVar: 'a_position',
     data: [],
     pointer: [3, gl.FLOAT, false, 0, 0],
+    // counter: 0
   };
 
-  var color = {
+  var multiPos = Array(LINES).fill(0).map((n, idx) => {
+    var vertices = initVertices(gl, POINTS, clientWidth, clientHeight);
+    var myPos = Object.assign({}, position, { data: vertices, name: `${idx}-position` });
+    return myPos;
+  });
+
+  var baseColor = {
     type: 'attribute',
     name: 'a_color',
     shaderVar: 'a_color',
     data: [],
     pointer: [4, gl.FLOAT, false, 0, 0],
+    currentColor: [],
+    counter: 0
   };
+
+  var multiColor = Array(LINES).fill(0).map((n, idx) => {
+    var colors = initColors(POINTS);
+    var updated = {
+      currentColor: [colors[0], colors[1], colors[2], colors[3]],
+      data: colors,
+      name: `${idx}-color`
+    };
+
+    return Object.assign({}, baseColor, updated);
+  });
 
   var draw = {
     type: 'draw',
     name: 'd_draw', // in this case the name is just used in the reconciler as a uniqueID; can gen ID in there if necc. instead
     drawCall: gl.drawArrays,
-    data: [gl.LINE_STRIP, 0, vertices.length/3]
+    data: [gl.LINE_STRIP, 0, POINTS]
   }
 
-  var colorNow = [colors[0], colors[1], colors[2], colors[3]];
 
-  requestAnimationFrame(drawLine.bind(this, gl, vertices, colorNow, variation, colors));
+  requestAnimationFrame(drawLine.bind(this, gl, multiPos, multiColor, VARIATION, COLORSHIFT));
 
-  function drawLine(gl, vertices, currentColor, variation, updatedColors, counter){
+  function drawLine(gl, positionArray, colorsArray, variation, colorShift){
 
-    // color shenanigans
-    var r, g, b, a;
-    var colorShift = 0.05;
-    counter = ++counter || 0;
+    var updatedVertices = positionArray.map((pos) => {
+      var vertices = Array.from(pos.data);
 
-    if (counter > 10) {
-      currentColor[0] += Math.random() > .5 ? colorShift : -colorShift;
-      currentColor[1] += Math.random() > .5 ? colorShift : -colorShift;
-      currentColor[2] += Math.random() > .5 ? colorShift : -colorShift;
-      currentColor[3] = 1;
-      counter = 0;
-    }
+      // new point
+      var x = clamp(vertices[vertices.length - 3] + plusOrMinus(variation), 0, gl.canvas.width, variation),
+          y = clamp(vertices[vertices.length - 2] + plusOrMinus(variation), 0, gl.canvas.height, variation);
 
-    r = currentColor[0];
-    g = currentColor[1];
-    b = currentColor[2];
-    a = currentColor[3];
 
-    updatedColors = updatedColors.slice(4);
-    updatedColors.push(r, g, b, a);
-    color.data = new Float32Array(updatedColors);
+      // add new point, remove old, mutation is fun
+      var nextVertices = vertices.slice(3);
+      nextVertices.push(x, y, 0);
+      pos.data = new Float32Array(nextVertices);
 
-    // new point
-    var x = clamp(vertices[vertices.length - 3] + plusOrMinus(variation), 0, gl.canvas.width, variation),
-        y = clamp(vertices[vertices.length - 2] + plusOrMinus(variation), 0, gl.canvas.height, variation);
+      return pos;
+    });
 
-    // add new point, remove old, mutation is fun
-    var nextVertices = vertices.slice(3);
-    nextVertices.push(x, y, 0);
-    position.data = new Float32Array(nextVertices);
+    var updatedColors = colorsArray.map((color) => {
+      // color shenanigans
+      var r, g, b, a;
 
-    render(gl, program, [resolution, color, position, draw])
+      color.counter++;
 
-    requestAnimationFrame(drawLine.bind(null, gl, nextVertices, currentColor, variation, updatedColors, counter));
+      if (color.counter > 10) {
+        color.currentColor[0] += Math.random() > .5 ? colorShift : -colorShift;
+        color.currentColor[1] += Math.random() > .5 ? colorShift : -colorShift;
+        color.currentColor[2] += Math.random() > .5 ? colorShift : -colorShift;
+        color.currentColor[3] = 1;
+        color.counter = 0;
+      }
+
+      r = color.currentColor[0];
+      g = color.currentColor[1];
+      b = color.currentColor[2];
+      a = color.currentColor[3];
+
+      var lastColors = Array.from(color.data);
+      var nextColors = lastColors.slice(4);
+      nextColors.push(r, g, b, a);
+      color.data = new Float32Array(nextColors);
+
+      return color;
+    });
+
+    var updatedComponents = updatedVertices.map((comp, idx) => {
+      console.log([resolution, updatedColors[idx], comp, draw]);
+      return [resolution, updatedColors[idx], comp, draw];
+    });
+
+
+    render(gl, program, [].concat(...updatedComponents))
+
+    requestAnimationFrame(drawLine.bind(null, gl, updatedVertices, updatedColors, variation, colorShift));
   }
 }
 
