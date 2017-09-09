@@ -45,6 +45,7 @@ function render(gl, program, components){
 function renderAttribute(component, program, gl) {
 
   if (hasNotChanged(component)){
+    // console.log('attribute not changed', component);
     return null;
   }
 
@@ -139,7 +140,6 @@ function isNew(component) {
 
 function hasNotChanged(component) {
   const oldComponent = reconciler.old[component.name];
-
 
   if (component.rerender || !oldComponent) {
     return false;

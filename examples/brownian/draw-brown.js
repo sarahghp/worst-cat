@@ -6,6 +6,8 @@ function main() {
   // create context
   var canvas = document.getElementById("c");
   var gl = initGL(canvas);
+  var clientWidth = gl.canvas.width;
+  var clientHeight = gl.canvas.height;
 
   // create, link, and use program
   var program = createProgramFromScripts(gl, '2d-vertex-shader', '2d-fragment-shader');
@@ -15,32 +17,29 @@ function main() {
   // var positionAttributeLocation = gl.getAttribLocation(program, "a_position");
   // var resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
   // var colorLocation = gl.getAttribLocation(program, "a_color");
-  
+
 
   // set the uniforms
   var resolution = {
     type: 'uniform',
     name: 'u_resolution',
-    data: [[gl.canvas.width, gl.canvas.height]],
+    shaderVar: 'u_resolution',
+    data: [[clientWidth, clientHeight ]],
     dataType: 'uniform2fv'
-  }
-
-  // gl.uniform2f(resolutionUniformLocation, gl.canvas.width, gl.canvas.height);
-
-
+  };
 
   // create geometry & color
 
   var points    = 1000,
       variation = 20;
 
-
-  var vertices = initVertices(gl, points),
+  var vertices = initVertices(gl, points, clientWidth, clientHeight),
       colors   = initColors(points);
 
   var position = {
     type: 'attribute',
     name: 'a_position',
+    shaderVar: 'a_position',
     data: [],
     pointer: [3, gl.FLOAT, false, 0, 0],
   };
@@ -48,6 +47,7 @@ function main() {
   var color = {
     type: 'attribute',
     name: 'a_color',
+    shaderVar: 'a_color',
     data: [],
     pointer: [4, gl.FLOAT, false, 0, 0],
   };
@@ -58,19 +58,6 @@ function main() {
     drawCall: gl.drawArrays,
     data: [gl.LINE_STRIP, 0, vertices.length/3]
   }
-
-  // var positionBuffer = gl.createBuffer();
-  // gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-  // gl.enableVertexAttribArray(positionAttributeLocation);
-  // gl.vertexAttribPointer(
-  //     positionAttributeLocation, 3, gl.FLOAT, false, 0, 0);
-
-  // var colorBuffer = gl.createBuffer();
-  // gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-  // gl.enableVertexAttribArray(colorLocation);
-  // gl.vertexAttribPointer(
-  //     colorLocation, 4, gl.FLOAT, false, 0, 0);
-
 
   var colorNow = [colors[0], colors[1], colors[2], colors[3]];
 
@@ -100,7 +87,6 @@ function main() {
     updatedColors.push(r, g, b, a);
     color.data = new Float32Array(updatedColors);
 
-
     // new point
     var x = clamp(vertices[vertices.length - 3] + plusOrMinus(variation), 0, gl.canvas.width, variation),
         y = clamp(vertices[vertices.length - 2] + plusOrMinus(variation), 0, gl.canvas.height, variation);
@@ -114,13 +100,12 @@ function main() {
 
     requestAnimationFrame(drawLine.bind(null, gl, nextVertices, currentColor, variation, updatedColors, counter));
   }
-
 }
 
 
 function initGL(canvas) {
   var gl = canvas.getContext("webgl");
-  
+
   if (!gl) {
    console.log('Wat, no gl.');
   }
@@ -132,17 +117,15 @@ function initGL(canvas) {
 ///// 🎨 DRAWING HELPER FUNCTIONS /////////////////////
 ////////////////////////////////////////////////////////
 
-function initVertices(gl, times){
+function initVertices(gl, times, width, height){
   var arr = [];
 
   for (var i = 0; i < times * 3; i += 3){
-    arr.push(gl.canvas.width/2, gl.canvas.height/2, 0);
+    arr.push(width/2, height/2, 0);
   }
 
   return arr;
 }
-
-
 
 function initColors(times){
 
