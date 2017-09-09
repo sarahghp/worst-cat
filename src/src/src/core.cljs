@@ -115,7 +115,7 @@
   :name         "positionOne"
   :data         (js/Float32Array. vertices-01)
   :pointer      [3, gl.FLOAT, false, 0, 0]
-  :re-render     true })
+  :re-render     false })
 
 (def position-02 {
   :type         "attribute"
@@ -123,7 +123,7 @@
   :name         "positionTwo"
   :data         (js/Float32Array. vertices-02)
   :pointer      [3, gl.FLOAT, false, 0, 0]
-  :re-render     true })
+  :re-render     false })
 
 (def cube-vertex-index {
   :type         "element_arr"
@@ -169,11 +169,12 @@
  })
 
 ;; --------------- sequence generation -----------------
-
-(defn select-position []
-   (if (< 0.5 (rand))
-       position-01
-       position-02 ))
+(defn select-position
+  [{:keys [position rerender]}]
+  (if (true? rerender)
+    (assoc position :rerender true)
+    (assoc position :rerender false)
+  ))
 
 (defn gen-transforms []
   { :translation [(rand width) (rand height) (rand 40)]
@@ -196,10 +197,10 @@
           z-rotate
           do-scale)))
 
-(defn gen-sequence []
+(defn gen-sequence [pos]
   (let [transforms (gen-transforms)]
     [ program
-      (select-position)
+      (select-position pos)
       cube-vertex-index
       (assoc transform-mat
         :data (list false (gen-trans-matrix transforms))
@@ -207,8 +208,19 @@
       color
       draw ]))
 
+(defn pos-01-seq []
+  (gen-sequence {:position position-01 :rerender false}))
+
+(defn pos-02-seq []
+  (gen-sequence {:position position-02 :rerender false}))
+
 (def draw-list
-  (take 1000 (repeatedly gen-sequence)))
+  (let [n 1000]
+    (conj
+      (gen-sequence {:position position-01 :rerender true})
+      (take (/ n 2) (repeatedly pos-01-seq))
+      (gen-sequence {:position position-02 :rerender true})
+      (take (/ n 2) (repeatedly pos-02-seq)))))
 
 ;; --------------- animation code -----------------
 
@@ -233,8 +245,6 @@
         (update-trans-matrix seq)))
     sequence))
 
-;; consider that mapping even with a no-op *has* a cost
-
 (defn animate-cube [gl sequence]
   (let [updated-seq (flatten (update-sequence sequence))] ;; flatten can be slow
     (js/clear gl)
@@ -242,8 +252,3 @@
     (js/requestAnimationFrame (.bind animate-cube nil gl updated-seq))))
 
 (js/requestAnimationFrame (.bind animate-cube nil gl draw-list))
-
-;; consider moving most of the draw code to its own file and just importing
-;; draw-list, update-sequence
-
-;; use reagent to render & watch? maybe as v2; just use rAF for now

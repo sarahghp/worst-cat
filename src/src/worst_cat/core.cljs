@@ -21,23 +21,6 @@
   [{ :keys [name re-render] :as comp }]
   (or re-render (not (= (get-in @reconciler [name :data]) (comp :data) ))))
 
-;; ---------- gl binding & call fns ---------------
-;; moved js versions of these
-;; to helpers if this is too annoying to manage
-
-#_(defn bind-set-array
-  [{:keys [data pointer]} gl buffer-type]
-
-  (let [buffer (.createBuffer gl)]
-    (.bindBuffer buffer-type buffer)
-    (.bufferData buffer-type data gl.STATIC_DRAW))
-
-    (when (= buffer-type (-.ARRAY_BUFFER gl))
-      (.vertexAttribPointer.apply gl pointer)))
-
-#_(defn set-uniform
-  [{ :keys [data-with-location data-type]}, gl]
-  (.apply (data-type gl) gl data-with-location))
 
 ;; --------------- processing fns -----------------
 
