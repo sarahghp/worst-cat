@@ -9,17 +9,16 @@
   <script id="3d-vertex-shader" type="x-shader/x-vertex">
 
     attribute vec4 a_position;
-    attribute vec4 a_color;
+    attribute vec2 a_texcoord;
 
     uniform mat4 u_matrix;
-
-    varying vec4 v_color;
+    varying vec2 v_texcoord;
 
 
     void main() {
       // Multiply the position by the matrix.
       gl_Position = u_matrix * a_position;
-      v_color = a_color;
+      v_texcoord = a_texcoord;
     }
 
   </script>
@@ -29,13 +28,14 @@
     // fragment shaders don't have a default precision so we need
     // to pick one. mediump is a good default
     precision mediump float;
-    varying vec4 v_color;
+    // Passed in from the vertex shader.
+    varying vec2 v_texcoord;
 
+    // The texture.
+    uniform sampler2D u_texture;
 
     void main() {
-      // gl_FragColor is a special variable a fragment shader
-      // is responsible for setting
-      gl_FragColor = v_color;
+       gl_FragColor = texture2D(u_texture, v_texcoord);
     }
 
   </script>
@@ -59,7 +59,6 @@
       gl.clearDepth(1.0);                 // Clear everything
       gl.enable(gl.DEPTH_TEST);           // Enable depth testing
       gl.depthFunc(gl.LEQUAL);            // Near things obscure far things
-      // create and bind buffers
 
       var vertices = [
         // Front face
@@ -99,7 +98,6 @@
         0.0,  100.0,    0.0
       ];
 
-      var colors = generateColors();
 
       // This array defines each face as two triangles, using the
       // indices into the vertex array to specify each triangle's
@@ -115,13 +113,18 @@
       ];
 
       var program = createProgramFromScripts(gl, '3d-vertex-shader', '3d-fragment-shader');
-      var positionLocation = gl.getAttribLocation(program, "a_position");
-      var colorLocation = gl.getAttribLocation(program, "a_color");
-      var matrixLocation = gl.getUniformLocation(program, "u_matrix");
-      var positionBuffer = gl.createBuffer();
-      var colorBuffer = gl.createBuffer();
-      var cubeVerticesIndexBuffer = gl.createBuffer();
 
+      var positionLocation = gl.getAttribLocation(program, "a_position");
+      var texcoordLocation = gl.getAttribLocation(program, "a_texcoord");
+
+      var matrixLocation = gl.getUniformLocation(program, "u_matrix");
+      var textureLocation = gl.getUniformLocation(program, "u_texture");
+
+      var positionBuffer = gl.createBuffer();
+      var texcoordBuffer = gl.createBuffer();
+
+      var cubeVerticesIndexBuffer = gl.createBuffer();
+      var texture = gl.createTexture();
 
       var initialMatrix = {
         translation  : [gl.canvas.clientWidth/3, gl.canvas.clientHeight/3, 40],
@@ -129,39 +132,71 @@
         scale        : [1, 1, 1],
       };
 
-      let multiMatrix = Array(1000).fill(0).map((n) => {
+      let multiMatrix = Array(10000).fill(0).map((n) => {
         let myMat = Object.assign({}, initialMatrix);
         myMat.translation = [Math.random() * 1000, Math.random() * 1000, Math.random() * 40];
         myMat.rotation = [Math.random() * 7.28, Math.random() * 7.28, 1];
         return myMat;
       });
 
+      // create, link, and use program
+      gl.useProgram(program);
+
+      // set attribute and uniform locations
+      gl.enableVertexAttribArray(positionLocation);
+      gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+      gl.vertexAttribPointer(
+            positionLocation, 3, gl.FLOAT, false, 0, 0);
+
+
+      gl.enableVertexAttribArray(texcoordLocation);
+      gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
+      setTexcoords(gl);
+      gl.vertexAttribPointer(texcoordLocation, 2, gl.FLOAT, false, 0, 0);
+
+
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVerticesIndexBuffer);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
+          new Uint16Array(cubeVertexIndices), gl.STATIC_DRAW);
+
+
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      // Fill the texture with a 1x1 blue pixel.
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+                    new Uint8Array([0, 0, 255, 255]));
+
+
+      // Asynchronously load an image
+      var image = new Image();
+      image.src = "./txt_sized.png";
+      image.addEventListener('load', function() {
+        // Now that the image has loaded make copy it to the texture.
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, image);
+
+        // Check if the image is a power of 2 in both dimensions.
+        if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
+          console.log('in if', image.width, image.height)
+           // Yes, it's a power of 2. Generate mips.
+           gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+           gl.generateMipmap(gl.TEXTURE_2D);
+        } else {
+          console.log('in else', image.width, image.height)
+           // No, it's not a power of 2. Turn of mips and set wrapping to clamp to edge
+           gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+           gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+           gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        }
+      });
+
+      gl.uniform1i(textureLocation, 0);
+
+
       function drawCube(translation, rotation, scale){
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         multiMatrix.forEach((mat) => {
-          // create, link, and use program
-          gl.useProgram(program);
-
-          // set attribute and uniform locations
-          gl.enableVertexAttribArray(positionLocation);
-          gl.enableVertexAttribArray(colorLocation);
-
-          gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-          gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-          gl.vertexAttribPointer(
-                positionLocation, 3, gl.FLOAT, false, 0, 0);
-
-          gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-          gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-          gl.vertexAttribPointer(
-              colorLocation, 4, gl.FLOAT, false, 0, 0);
-
-          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVerticesIndexBuffer);
-
-          // Now send the element array to GL
-          gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
-              new Uint16Array(cubeVertexIndices), gl.STATIC_DRAW);
 
           mat.rotation = mat.rotation.map((r, i) => r += (.01 * i));
 
@@ -193,43 +228,76 @@
 
 
     ////////////////////////////////////////////////////////
-    ///// 🎨 DRAWING HELPER FUNCTIONS /////////////////////
+    ///// 🎆 TEXTURE HELPER FUNCTION /////////////////////
     ////////////////////////////////////////////////////////
 
-    function generateColors() {
-      var colors = [
-        normalizeColor([255,  240,  85,   255]),    // Front face
-        normalizeColor([146,  149,  152,  255]),    // Back face
-        normalizeColor([12,   182,  145,  255]),    // Top face
-        normalizeColor([255,    0,  72,   255]),    // Bottom face
-        normalizeColor([185,  119,  211,  255]),    // Right face
-        normalizeColor([255,  137,  147,  255])     // Left face
-      ];
+    // Fill the buffer with texture coordinates the cube.
+    function setTexcoords(gl) {
+      gl.bufferData(
+          gl.ARRAY_BUFFER,
+          new Float32Array(
+            [
+            // select the bottom left image
 
-      var generatedColors = [];
+            0.0   , 0.5,
+            0.0   , 0.0,
+            0.25, 0.0  ,
+            0.25, 0.5,
+            // select the bottom middle image
+            // 4,  5,  6,      4,  6,  7,    // back
 
-      for (j=0; j<6; j++) {
-        var c = colors[j];
+            0.5 , 0.0  ,
+            0.25, 0.0  ,
+            0.25, 0.5,
+            0.5 , 0.5,
 
-        for (var i=0; i<4; i++) {
-          generatedColors = generatedColors.concat(c);
-        }
-      }
+            // select to bottom right image
+            // 8,  9,  10,     8,  10, 11,   // top
 
-      return generatedColors;
+            0.5 , 0.5,
+            0.5 , 0.0  ,
+            0.75, 0.0  ,
+            0.75, 0.5,
+            // select the top left image
+
+            // 12, 13, 14,     12, 14, 15,   // bottom
+
+
+
+            0.25, 0.5,
+            0.0   , 0.5,
+            0.0   , 1.0  ,
+            0.25, 1.0  ,
+            // select the top middle image
+
+            // 16, 17, 18,     16, 18, 19,   // right
+
+            0.25, 1.0  ,
+            0.25, 0.5,
+            0.5 , 0.5,
+            0.5 , 1.0  ,
+
+            // select the top right image
+
+            // 20, 21, 22,     20, 22, 23    // left
+
+            0.75, 0.5,
+            0.5 , 0.5,
+            0.5 , 1.0  , // double b
+            0.75, 1.0  ,
+
+          ]),
+          gl.STATIC_DRAW);
     }
-
-    function normalizeColor(color){
-      return color.map(function(c){
-        return c/255;
-      })
-    }
-
-
 
     ////////////////////////////////////////////////////////
     ///// 🔢 MATHING HELPER FUNCTIONS /////////////////////
     ////////////////////////////////////////////////////////
+
+
+    function isPowerOf2(value) {
+      return (value & (value - 1)) == 0;
+    }
 
     function plusOrMinus(range){
       var n = Math.random() * (range * 2); // .11 * (.02)
