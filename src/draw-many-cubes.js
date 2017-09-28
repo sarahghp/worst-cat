@@ -137,7 +137,7 @@ function main() {
     scale        : [1, 1, 1],
   });
 
-  let multiMatrixList = I.List(Array(10).fill(0).map(() => {
+  let multiMatrixList = I.List(Array(3000).fill(0).map(() => {
     return initialMatrix.withMutations((initMat) => {
       initMat.set('translation', [Math.random() * 1000, Math.random() * 1000, Math.random() * 40]);
       initMat.set('rotation', [Math.random() * 7.28, Math.random() * 7.28, 1]);
