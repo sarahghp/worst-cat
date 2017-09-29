@@ -122,7 +122,7 @@ function main() {
       mat.rotation = mat.rotation.map((r, i) => r += (.01 * i));
 
       // Compute the matrix
-      var matrix = m4.projection(clientWidth, clientHeight, 400);
+      let matrix = m4.projection(clientWidth, clientHeight, 400);
           matrix = m4.translate(matrix, mat.translation[0], mat.translation[1], mat.translation[2]);
           matrix = m4.xRotate(matrix, mat.rotation[0]);
           matrix = m4.yRotate(matrix, mat.rotation[1]);
