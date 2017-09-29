@@ -1,8 +1,6 @@
-const iMap = Immutable.Map;
-const iList = Immutable.List;
+const I = Immutable;
 
-let callOrderDebug = false;
-let reconciler = iMap({});
+let reconciler = I.Map({});
 
 ////////////////////////////////////////////////////////
 /////////////////////   MAIN   /////////////////////////
@@ -11,7 +9,7 @@ let reconciler = iMap({});
 function render(gl, components){ // components is a single list of maps
 
   // turn componenets into Immutable List if not already
-  let immComponents =  !iList.isList(components) ? iList(components) : components;
+  const immComponents =  !I.List.isList(components) ? I.List(components) : components;
 
   // Check to see if this list is the same we were last called with and short-circuit if so
   // Though it would be silly to call render() with something totally unchanged, let's just
@@ -30,19 +28,15 @@ function render(gl, components){ // components is a single list of maps
         return bindProgram(component, gl);
 
       case 'attribute':
-        callOrderDebug && console.log(`${component.get('name')} in switch.`);
         return renderAttribute(component, gl);
 
       case 'uniform':
-        callOrderDebug && console.log(`${component.get('name')} in switch.`);
         return renderUniform(component, gl);
 
       case 'element_arr':
-        callOrderDebug && console.log('element_arr in switch.');
         return renderElementArray(component, gl);
 
       case 'draw':
-        callOrderDebug && console.log('draw in switch.');
         return drawIt(component, gl);
 
       default:
@@ -66,7 +60,7 @@ function bindProgram(program, gl) {
   const programName = program.get('name');
   const programData = program.get('data');
 
-  if (reconciler.get('lastUsedProgram', iMap()).equals(program)) {
+  if (reconciler.get('lastUsedProgram', I.Map()).equals(program)) {
     return null;
   }
 
@@ -205,10 +199,10 @@ function drawIt(component, gl) {
 
 // ------------------- GL BUFFER CALLS ------------------------
 
-function bindAndSetArray (component, gl, bufferType){ // 2.7% overall
+function bindAndSetArray (component, gl, bufferType){
   const buffer = gl.createBuffer();
   gl.bindBuffer(bufferType, buffer);
-  gl.bufferData(bufferType, component.get('data'), gl.STATIC_DRAW); //0.9% overall, 0.4ms, 0.6ms, 0.3ms
+  gl.bufferData(bufferType, component.get('data'), gl.STATIC_DRAW);
   bufferType === gl.ARRAY_BUFFER && gl.vertexAttribPointer.apply(gl, component.get('pointer'));
 }
 
@@ -255,18 +249,3 @@ function arraysEqual (arr1, arr2) {
   return true;
 
 }
-
-// ------------------- JUST REFERNCE NOTES ------------------------
-
-
-// function bindAndSetArray (component, gl, bufferType){ // 3.0% overall
-//   const buffer = gl.createBuffer();
-//   const data = getData(component); // moving this out of bufferData helps performance a little?
-//   gl.bindBuffer(bufferType, buffer);
-//   gl.bufferData(bufferType, data, gl.STATIC_DRAW); // 0.8% overall
-//   bufferType === gl.ARRAY_BUFFER && gl.vertexAttribPointer.apply(gl, component.get('pointer'));
-// }
-
-// function getData (component) {
-//   return component.get('data');
-// }

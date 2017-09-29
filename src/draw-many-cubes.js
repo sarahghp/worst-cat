@@ -127,9 +127,10 @@ function main() {
 
   let cubeVertexIndex = I.Map({
     type: 'element_arr',
-    name: 'e_indices', // in this case the name is just used in the reconciler as a uniqueID; can gen ID in there if necc. instead
+    name: 'e_indices',
     data: new Uint16Array(cubeVertexIndices),
   });
+
   // matrix
   const initialMatrix = I.Map({
     translation  : [clientWidth/3, clientHeight/3, 40],
@@ -137,7 +138,7 @@ function main() {
     scale        : [1, 1, 1],
   });
 
-  let multiMatrixList = I.List(Array(3000).fill(0).map(() => {
+  const multiMatrixList = I.List(Array(3000).fill(0).map(() => {
     return initialMatrix.withMutations((initMat) => {
       initMat.set('translation', [Math.random() * 1000, Math.random() * 1000, Math.random() * 40]);
       initMat.set('rotation', [Math.random() * 7.28, Math.random() * 7.28, 1]);
@@ -145,7 +146,7 @@ function main() {
     })
   }));
 
-  let transformMatrix = I.Map({
+  const transformMatrix = I.Map({
     type: 'uniform',
     name: 'u_matrix',
     shaderVar: 'u_matrix',
@@ -156,7 +157,7 @@ function main() {
   // color
   const colors = generateColors();
 
-  let color = I.Map({
+  const color = I.Map({
     type: 'attribute',
     name: 'a_color',
     shaderVar: 'a_color',
@@ -165,9 +166,9 @@ function main() {
   });
 
   // draw
-  let draw = I.Map({
+  const draw = I.Map({
     type: 'draw',
-    name: 'd_draw', // in this case the name is just used in the reconciler as a uniqueID; can gen ID in there if necc. instead
+    name: 'd_draw',
     drawCall: gl.drawElements,
     data: [gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0]
   })
@@ -177,8 +178,6 @@ function main() {
   function animateCube(gl, components, matrixList){
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    // have to get updated values, create new transform data, set that data, generate components, call
 
     // Create matrices
     const updatedMatrices = matrixList.map((mat) => {
