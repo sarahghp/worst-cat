@@ -4,14 +4,14 @@ window.onload = main;
 function main() {
 
   // create context
-  const canvas = document.getElementById('c');
+  const canvas = document.getElementById("c");
   const gl = initGL(canvas);
 
   // create, link, and use program
   const program = createProgramFromScripts(gl, '3d-vertex-shader', '3d-fragment-shader');
 
   // geometry
-  const verticesOne = [
+  const vertices = [
     // Front face
     0.0,    0.0,    100.0,
     100.0,  0.0,    100.0,
@@ -49,60 +49,11 @@ function main() {
     0.0,  100.0,    0.0
   ];
 
-  const verticesTwo = [
-    // Front face
-    0.0,    0.0,    50.0,
-    100.0,  0.0,    50.0,
-    100.0,  100.0,  100.0,
-    0.0,    100.0,  100.0,
-
-    // Back face
-    0.0,    0.0,    0.0,
-    0.0,    100.0,  0.0,
-    50.0,  50.0,  0.0,
-    100.0,  0.0,    0.0,
-
-    // Top face
-    0.0,    100.0,  0.0,
-    0.0,    100.0,  100.0,
-    100.0,  100.0,  100.0,
-    100.0,  100.0,  0.0,
-
-    // Bottom face
-    0.0,    0.0,    0.0,
-    100.0,  0.0,    0.0,
-    100.0,  0.0,    100.0,
-    0.0,    0.0,    100.0,
-
-    // Right face
-    100.0,    0.0,  0.0,
-    50.0,  50.0,  0.0,
-    100.0,  100.0,  100.0,
-    100.0,    0.0,  100.0,
-
-    // Left face
-    0.0,    0.0,    0.0,
-    0.0,    0.0,    100.0,
-    0.0,  50.0,    50.0,
-    0.0,  100.0,    0.0
-  ];
-
-  let positionOne = {
+  const position = {
     type: 'attribute',
-    shaderVar: 'a_position',
-    name: 'positionOne',
-    data: new Float32Array(verticesOne),
+    name: 'a_position',
+    data: new Float32Array(vertices),
     pointer: [3, gl.FLOAT, false, 0, 0],
-    rerender: false,
-  };
-
-  let positionTwo = {
-    type: 'attribute',
-    shaderVar: 'a_position',
-    name: 'positionTwo',
-    data: new Float32Array(verticesTwo),
-    pointer: [3, gl.FLOAT, false, 0, 0],
-    rerender: false,
   };
 
   const cubeVertexIndices = [
@@ -114,9 +65,9 @@ function main() {
     20, 21, 22,     20, 22, 23    // left
   ];
 
-  let cubeVertexIndex = {
+  const cubeVertexIndex = {
     type: 'element_arr',
-    name: 'e_indices', // in this case the name is just used in the reconciler as a uniqueID; can gen ID in there if necc. instead
+    name: 'e_indices',
     data: new Uint16Array(cubeVertexIndices),
   };
 
@@ -127,17 +78,16 @@ function main() {
     scale        : [1, 1, 1],
   };
 
-  let multiMatrix = Array(3000).fill(0).map((n) => {
+  const multiMatrix = Array(1000).fill(0).map((n) => {
     let myMat = Object.assign({}, initialMatrix);
     myMat.translation = [Math.random() * 1000, Math.random() * 1000, Math.random() * 40];
     myMat.rotation = [Math.random() * 7.28, Math.random() * 7.28, 1];
     return myMat;
   });
 
-  let transformMatrix = {
+  const transformMatrix = {
     type: 'uniform',
     name: 'u_matrix',
-    shaderVar: 'u_matrix',
     data: [],
     dataType: 'uniformMatrix4fv'
   };
@@ -145,16 +95,15 @@ function main() {
   // color
   const colors = generateColors();
 
-  let color = {
+  const color = {
     type: 'attribute',
     name: 'a_color',
-    shaderVar: 'a_color',
     data: new Float32Array(colors),
     pointer: [4, gl.FLOAT, false, 0, 0],
   };
 
   // draw
-  let draw = {
+  const draw = {
     type: 'draw',
     name: 'd_draw', // in this case the name is just used in the reconciler as a uniqueID; can gen ID in there if necc. instead
     drawCall: gl.drawElements,
@@ -162,71 +111,42 @@ function main() {
   }
 
 
-  const clientWidth = gl.canvas.clientWidth;
-  const clientHeight = gl.canvas.clientHeight;
+  var clientWidth = gl.canvas.clientWidth;
+  var clientHeight = gl.canvas.clientHeight;
 
   // animate
-  function animateCube(gl, program, components, matrixList){
+  function animateCube(gl, program, components, rts, timestamp){
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    const updatedMatrices = matrixList.map((mat) => {
+    let cubes = multiMatrix.map((mat) => {
       mat.rotation = mat.rotation.map((r, i) => r += (.01 * i));
-      return mat;
-    });
-
-    const updatedComponents = updatedMatrices.map((updatedMatrix, idx) => {
-
-      const rotation = updatedMatrix.rotation
-      const translation = updatedMatrix.translation;
-      const scale = updatedMatrix.scale;
 
       // Compute the matrix
-      let matrix = m4.projection(clientWidth, clientHeight, 400);
-          matrix = m4.translate(matrix, translation[0], translation[1], translation[2]);
-          matrix = m4.xRotate(matrix, rotation[0]);
-          matrix = m4.yRotate(matrix, rotation[1]);
-          matrix = m4.zRotate(matrix, rotation[2]);
-          matrix = m4.scale(matrix, scale[0], scale[1], scale[2]);
+      var matrix = m4.projection(clientWidth, clientHeight, 400);
+          matrix = m4.translate(matrix, mat.translation[0], mat.translation[1], mat.translation[2]);
+          matrix = m4.xRotate(matrix, mat.rotation[0]);
+          matrix = m4.yRotate(matrix, mat.rotation[1]);
+          matrix = m4.zRotate(matrix, mat.rotation[2]);
+          matrix = m4.scale(matrix, mat.scale[0], mat.scale[1], mat.scale[2]);
 
-      return Object.assign({}, transformMatrix, { 'name': `uniform-${idx}`, 'data': [false, matrix] });
+      myTransform = Object.assign({}, transformMatrix)
+      myTransform.data = [false, matrix];
+
+      return [position, cubeVertexIndex, myTransform, color, draw]
     });
 
-    const totalComponents = updatedComponents.length;
-    const midwayComponent = Math.floor(totalComponents/2);
-
-    const updatedSequence = updatedComponents.map((updatedComp, idx) => {
-
-      let position;
-
-      if (idx == 0) {
-        positionOne.rerender = true;
-        position = positionOne;
-        positionOne.rerender = false;
-      } else if (idx < midwayComponent) {
-        position = positionOne;
-      } else if (idx == midwayComponent) {
-        positionTwo.rerender = true;
-        position = positionTwo;
-        positionTwo.rerender = false;
-      } else {
-        position = positionTwo;
-      }
-
-      return [position, components[1], updatedComp, components[3], components[4]];
-    });
-
-    render(gl, program, [].concat(...updatedSequence)); // spread nested return array
-    requestAnimationFrame(animateCube.bind(null, gl, program, components, updatedMatrices));
+    render(gl, program, [].concat.apply([], cubes));
+    requestAnimationFrame(animateCube.bind(null, gl, program, components, rts));
   }
 
-  var drawUs = [positionOne, cubeVertexIndex, transformMatrix, color, draw];
-  requestAnimationFrame(animateCube.bind(null, gl, program, drawUs, multiMatrix));
+  const drawUs = [position, cubeVertexIndex, transformMatrix, color, draw];
+  requestAnimationFrame(animateCube.bind(null, gl, program, drawUs, initialMatrix));
 
 }
 
 
 function initGL(canvas) {
-  const gl = canvas.getContext('webgl');
+  var gl = canvas.getContext("webgl");
 
   if (!gl) {
    console.log('Wat, no gl.');

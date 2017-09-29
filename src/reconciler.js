@@ -145,7 +145,8 @@ function hasNotChanged(component) {
     return false;
   }
 
-  // this cannot just test component because in this case we draw the mutability division where we store elements
+  // this cannot just test component because in this case we draw the mutability
+  // division where we store elements
   return (oldComponent.name === component.name) && arraysEqual(oldComponent.data, component.data);
 }
 
