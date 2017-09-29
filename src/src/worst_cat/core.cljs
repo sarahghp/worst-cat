@@ -42,7 +42,7 @@
               (get-in @reconciler [name :location])
               (.getAttribLocation gl program shader-var))
           updated-pointer (into [location] (comp :pointer))
-          updated-comp (assoc comp :pointer updated-pointer :location location)] ; change these to assoc
+          updated-comp (assoc comp :pointer updated-pointer :location location)]
 
       (when (is-new? comp)
         (.enableVertexAttribArray gl location))
@@ -82,12 +82,6 @@
 (defn draw-it
   [{:keys [data draw-call] :as comp } gl]
   (js/drawIt draw-call (into-array data) gl)
-  nil)
-
-;; this one means we have to do a lot more shenanigans to get apply working
-#_(defn draw-it
-  [{:keys [data draw-call] :as comp } gl]
-  (.apply (aget gl draw-call) gl (into-array data))
   nil)
 
 ;; --------------- reconciler -----------------
